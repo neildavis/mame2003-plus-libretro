@@ -1,5 +1,6 @@
 TARGET_NAME := mame2003_plus
 CORE_DIR    := src
+OUTPUTS_DIR	:= outputs/src
 
 DEBUG         ?= 0
 DEBUGGER      ?= 0

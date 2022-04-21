@@ -1,0 +1,10 @@
+[Unit]
+Description=Libretro-MAME2003-Plus Outputs Server
+After=network.target
+
+[Service]
+ExecStart=%TARGET%
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
