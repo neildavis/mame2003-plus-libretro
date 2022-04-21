@@ -27,6 +27,13 @@ Special thanks to:
 #include "cpu/i8039/i8039.h"
 #include "system16.h"
 
+/* ND: Include Wiring Pi for GPIO lamp outputs */
+#include <wiringPi.h>
+
+/* ND: Define GPIO pins for lamp outputs */
+#define GPIO_LAMP_LOCK_ON	2	/* Lock-on lamp will be on GPIO/BCM pin 2 */
+#define GPIO_LAMP_DANGER	3	/* Danger lamp will be on GPIO/BCM pin 3 */
+
 /*****************************************************************************/
 /* After Burner I (Japanese Version)
 (c) 1987 SEGA
@@ -555,6 +562,10 @@ static WRITE16_HANDLER( aburner_unknown_w ){
 }
 static WRITE16_HANDLER( aburner_lamp_w ){
 	COMBINE_DATA( &aburner_lamp );
+
+	/* ND: Write out lamp status to GPIO */
+	digitalWrite(GPIO_LAMP_LOCK_ON, (data >> 5) & 0x01);
+	digitalWrite(GPIO_LAMP_DANGER, (data >> 6) & 0x01);
 }
 
 /*****************************************************************************/
@@ -824,6 +835,11 @@ static MACHINE_INIT( aburner ){
 	sys16_textlayer_lo_max=0;
 	sys16_textlayer_hi_min=0;
 	sys16_textlayer_hi_max=0xff;
+
+	/* ND: Setup Wiring Pi for GPIO output for lamps */
+	wiringPiSetupGpio();
+	pinMode(GPIO_LAMP_LOCK_ON, OUTPUT);
+	pinMode(GPIO_LAMP_DANGER, OUTPUT);
 }
 
 static DRIVER_INIT( thndrbdj ){
