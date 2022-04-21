@@ -22,6 +22,7 @@ Special thanks to:
 */
 
 #include "driver.h"
+#include "output.h"
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
@@ -550,10 +551,31 @@ static READ16_HANDLER( aburner_analog_r ){
 UINT16 aburner_unknown;
 UINT16 aburner_lamp;
 
+inline static bool bit_equal(UINT16 first, UINT16 second, int bitIdx) {
+	return (((first >> (bitIdx - 1)) & 0x01) ==  ((second >> (bitIdx - 1)) & 0x01) );
+}
+
 static WRITE16_HANDLER( aburner_unknown_w ){
 	COMBINE_DATA( &aburner_unknown );
 }
+
 static WRITE16_HANDLER( aburner_lamp_w ){
+
+	
+	if (!bit_equal(aburner_lamp, data, 2)) {
+		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp */
+	}
+	
+	if (!bit_equal(aburner_lamp, data, 3)) {
+		output_set_led_value(0, (data >> 2) & 0x01);	/* start lamp */
+	}
+	if (!bit_equal(aburner_lamp, data, 6)) {
+		output_set_lamp_value(0, (data >> 5) & 0x01);	/* lock on lamp */
+	}
+	if (!bit_equal(aburner_lamp, data, 7)) {
+		output_set_lamp_value(1, (data >> 6) & 0x01);	/* danger lamp */
+
+	}
 	COMBINE_DATA( &aburner_lamp );
 }
 
@@ -824,6 +846,12 @@ static MACHINE_INIT( aburner ){
 	sys16_textlayer_lo_max=0;
 	sys16_textlayer_hi_min=0;
 	sys16_textlayer_hi_max=0xff;
+
+	output_init("aburner");
+}
+
+static MACHINE_STOP( aburner ){
+	output_stop();
 }
 
 static DRIVER_INIT( thndrbdj ){

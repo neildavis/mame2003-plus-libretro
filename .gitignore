@@ -6,3 +6,4 @@
 *.so
 package.json
 .npmignore
+tools/bin2c/bin2c
