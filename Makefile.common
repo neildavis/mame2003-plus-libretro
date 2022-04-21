@@ -3,6 +3,7 @@ LIBRETRO_COMM_DIR := $(CORE_DIR)/libretro-common
 INCFLAGS := \
 	-I. \
 	-I$(CORE_DIR) \
+	-I$(OUTPUTS_DIR) \
 	-I$(CORE_DIR)/includes \
 	-I$(CORE_DIR)/cpu/m68000 \
 	-I$(CORE_DIR)/mame2003 \
@@ -50,6 +51,7 @@ SOURCES_C += \
 	$(CORE_DIR)/info.c \
 	$(CORE_DIR)/inptport.c \
 	$(CORE_DIR)/input.c \
+	$(CORE_DIR)/output.c \
 	$(CORE_DIR)/mame-memory.c \
 	$(CORE_DIR)/mame.c \
 	$(CORE_DIR)/mamedbg.c \
