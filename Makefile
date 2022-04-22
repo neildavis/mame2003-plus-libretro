@@ -1,5 +1,6 @@
 TARGET_NAME := mame2003_plus
 CORE_DIR    := src
+OUTPUTS_DIR	:= outputs/src
 
 DEBUG         ?= 0
 DEBUGGER      ?= 0
@@ -100,7 +101,6 @@ ifeq ($(platform), unix)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 
 # Linux Portable
 else ifeq ($(platform), linux-portable)
@@ -175,7 +175,6 @@ else ifeq ($(platform), rpi0)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -marm -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -188,7 +187,6 @@ else ifeq ($(platform), rpi1)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -marm -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -201,7 +199,6 @@ else ifeq ($(platform), rpi2)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -marm -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -214,7 +211,6 @@ else ifeq ($(platform), rpi3)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -marm -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -227,7 +223,6 @@ else ifeq ($(platform), rpi3_64)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -mcpu=cortex-a53 -mtune=cortex-a53
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -239,7 +234,6 @@ else ifeq ($(platform), rpi4)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -marm -mcpu=cortex-a72 -mfpu=neon-fp-armv8 -mfloat-abi=hard
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
@@ -252,7 +246,6 @@ else ifeq ($(platform), rpi4_64)
 	fpic = -fPIC
 	CFLAGS += $(fpic)
 	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
-	LIBS += -lwiringPi
 	PLATCFLAGS += -mcpu=cortex-a72 -mtune=cortex-a72
 	PLATCFLAGS += -fomit-frame-pointer -ffast-math
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions

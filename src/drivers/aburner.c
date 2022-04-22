@@ -22,17 +22,11 @@ Special thanks to:
 */
 
 #include "driver.h"
+#include "output.h"
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
 #include "system16.h"
-
-/* ND: Include Wiring Pi for GPIO lamp outputs */
-#include <wiringPi.h>
-
-/* ND: Define GPIO pins for lamp outputs */
-#define GPIO_LAMP_LOCK_ON	2	/* Lock-on lamp will be on GPIO/BCM pin 2 */
-#define GPIO_LAMP_DANGER	3	/* Danger lamp will be on GPIO/BCM pin 3 */
 
 /*****************************************************************************/
 /* After Burner I (Japanese Version)
@@ -557,15 +551,32 @@ static READ16_HANDLER( aburner_analog_r ){
 UINT16 aburner_unknown;
 UINT16 aburner_lamp;
 
+inline static bool bit_equal(UINT16 first, UINT16 second, int bitIdx) {
+	return (((first >> (bitIdx - 1)) & 0x01) ==  ((second >> (bitIdx - 1)) & 0x01) );
+}
+
 static WRITE16_HANDLER( aburner_unknown_w ){
 	COMBINE_DATA( &aburner_unknown );
 }
-static WRITE16_HANDLER( aburner_lamp_w ){
-	COMBINE_DATA( &aburner_lamp );
 
-	/* ND: Write out lamp status to GPIO */
-	digitalWrite(GPIO_LAMP_LOCK_ON, (data >> 5) & 0x01);
-	digitalWrite(GPIO_LAMP_DANGER, (data >> 6) & 0x01);
+static WRITE16_HANDLER( aburner_lamp_w ){
+
+	/* 
+	if (!bit_equal(aburner_lamp, data, 2)) {
+		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp 
+	}
+	*/
+	if (!bit_equal(aburner_lamp, data, 3)) {
+		output_set_led_value(0, (data >> 2) & 0x01);	/* start lamp */
+	}
+	if (!bit_equal(aburner_lamp, data, 6)) {
+		output_set_lamp_value(0, (data >> 5) & 0x01);	/* lock on lamp */
+	}
+	if (!bit_equal(aburner_lamp, data, 7)) {
+		output_set_lamp_value(1, (data >> 6) & 0x01);	/* danger lamp */
+
+	}
+	COMBINE_DATA( &aburner_lamp );
 }
 
 /*****************************************************************************/
@@ -836,10 +847,11 @@ static MACHINE_INIT( aburner ){
 	sys16_textlayer_hi_min=0;
 	sys16_textlayer_hi_max=0xff;
 
-	/* ND: Setup Wiring Pi for GPIO output for lamps */
-	wiringPiSetupGpio();
-	pinMode(GPIO_LAMP_LOCK_ON, OUTPUT);
-	pinMode(GPIO_LAMP_DANGER, OUTPUT);
+	output_init("aburner");
+}
+
+static MACHINE_STOP( aburner ){
+	output_stop();
 }
 
 static DRIVER_INIT( thndrbdj ){
