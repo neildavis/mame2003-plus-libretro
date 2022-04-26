@@ -9,6 +9,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
+#include <pwd.h>
 
 #include <wiringPi.h>
 #include <udd.h>
@@ -60,10 +61,16 @@ void initWiringPi() {
 }
 
 void initImages() {
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+   
     char path[4096];
-    sprintf(path, "%s/.local/lrmame2003osvr/lock.bmp", getenv("HOME"));
+    sprintf(path, "%s/.local/lrmame2003osvr/lock.bmp", homedir);
     bmp_lock.loadBMP(path, 0, 0);
-    sprintf(path, "%s/.local/lrmame2003osvr/warn.bmp", getenv("HOME"));
+    sprintf(path, "%s/.local/lrmame2003osvr/warn.bmp", homedir);
     bmp_warn.loadBMP(path, 0, 0);
 }
 

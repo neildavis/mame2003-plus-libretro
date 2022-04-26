@@ -45,6 +45,7 @@ install: build
 	cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR_BIN)/
 	cp $(RESOURCE_DIR_IMAGES)/*.bmp $(INSTALL_DIR_RES)/
 	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
+	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
 	systemctl --user enable $(TARGET)
 
 uninstall:
