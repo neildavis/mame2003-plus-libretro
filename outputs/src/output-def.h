@@ -29,8 +29,4 @@
 #define AFTER_BURNER_LAMP_LOCK_ON 0
 #define AFTER_BURNER_LAMP_DANGER 1
 
-/* Define GPIO pins for After Burner lamp outputs */
-#define GPIO_LAMP_LOCK_ON	2	/* Lock-on lamp will be on GPIO/BCM pin 2 */
-#define GPIO_LAMP_DANGER	3	/* Danger lamp will be on GPIO/BCM pin 3 */
-
 #endif /* __OUTPUT_DEF_H__ */

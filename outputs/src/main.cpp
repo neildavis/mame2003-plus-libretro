@@ -9,16 +9,62 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
+
 #include <wiringPi.h>
+#include <udd.h>
 
 #include "output-def.h"
 
-void initWiringPi(void) {
-    wiringPiSetupGpio();
-	pinMode(GPIO_LAMP_LOCK_ON, OUTPUT);
-	pinMode(GPIO_LAMP_DANGER, OUTPUT);
-    digitalWrite(GPIO_LAMP_LOCK_ON, 0);
-    digitalWrite(GPIO_LAMP_DANGER, 0);
+using namespace udd;
+
+DisplayConfigruation displayConfig;
+DisplayST7789R display = DisplayST7789R();
+
+const int kSpiSpeed = 90000000;
+// Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
+// Hence use of Point offsets below
+// It is also rendered in portrait orientation (hence use of DEGREE_270 rotation everywhere!)
+const int kDisplayWidth = 240;
+const int kDisplayHeight = 320;
+
+// Images
+Image bmp_lock= Image(280, 104, BLACK);
+Image bmp_clear_lock= Image(280, 104, BLACK);
+Image bmp_warn = Image(280, 120, BLACK);
+Image bmp_clear_warn = Image(280, 120, BLACK);
+// Positions to place images
+Point point_lock_tl = Point(20, 8);
+Point point_lock_br = Point(299, 111);
+Point point_warn_tl = Point(20, 120);
+Point point_warn_br = Point(299, 239);
+
+bool gLock = false, gDanger = false;
+
+
+void configureDisplay() {
+    displayConfig.width = kDisplayWidth;
+    displayConfig.height = kDisplayHeight;
+    displayConfig.spiSpeed = kSpiSpeed;
+
+    displayConfig.CS = 5;   // SPI Chip Select (we're using SPI0 with MOSI/SCLK on BCM 10/11 but overriding use of CE0/CE1)
+    displayConfig.DC = 6;   // TFT SPI Data or Command selector
+    displayConfig.RST = 13; // Display Reset
+    displayConfig.BLK = -1; // ?? Not used
+
+    display.openDisplay(displayConfig);
+    display.clearScreen(BLACK);
+}
+
+void initWiringPi() {
+	wiringPiSetupGpio();  // use BCM pin numbers
+}
+
+void initImages() {
+    char path[4096];
+    sprintf(path, "%s/.local/lrmame2003osvr/lock.bmp", getenv("HOME"));
+    bmp_lock.loadBMP(path, 0, 0);
+    sprintf(path, "%s/.local/lrmame2003osvr/warn.bmp", getenv("HOME"));
+    bmp_warn.loadBMP(path, 0, 0);
 }
 
 int parseLampOutputName(const char *output_name) {
@@ -37,16 +83,42 @@ int parseLedOutputName(const char *output_name) {
    return -1;
  }
 
+ void aburner_lock(bool lock) {
+    if (lock != gLock) {
+        if (lock) {
+            // lock-on gained
+            display.showImage(bmp_lock, point_lock_tl, point_lock_br, DEGREE_270);
+        } else {
+            // lock-on lost 
+            display.showImage(bmp_clear_lock, point_lock_tl, point_lock_br, DEGREE_270);
+        }
+        gLock = lock;
+    }
+}
+
+ void aburner_danger(bool danger) {
+    if (danger != gDanger) {
+        if (danger) {
+            // Danger present
+            display.showImage(bmp_warn, point_warn_tl, point_warn_br, DEGREE_270);
+        } else {
+            // Danger cleared
+            display.showImage(bmp_clear_warn, point_warn_tl, point_warn_br, DEGREE_270);
+        }
+        gDanger = danger;
+    }
+ }
+
  void aburner_output(const char *output_name, int value) {
     int n;
     n = parseLampOutputName(output_name);
     if (n >= 0) {
         if (AFTER_BURNER_LAMP_LOCK_ON == n) {
             /* After Burner 'Lock-On' lamp */
-            digitalWrite(GPIO_LAMP_LOCK_ON, value);
+            aburner_lock(value > 0);
         } else if (AFTER_BURNER_LAMP_DANGER == n) {
             /* After Burner 'Danger' lamp */
-            digitalWrite(GPIO_LAMP_DANGER, value);
+            aburner_danger(value > 0);
         }
         return;
     }
@@ -69,6 +141,12 @@ int main(int argc, char **argv) {
 
     /* WiringPi Setup */
     initWiringPi();
+
+    /* Configure the ST7789 display */
+    configureDisplay();
+
+    /* Pre-load images */
+    initImages();
 
     /* Make the FIFO pipe */
     fprintf(stdout, "%s: Creating FIFO pipe at %s\n", argv[0], OUTPUTS_PIPE_NAME);
