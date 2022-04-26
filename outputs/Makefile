@@ -11,7 +11,7 @@ CORE_DIR    := src
 BUILD_DIR	:= build
 CONFIG_DIR	:= config
 SYSTEMD_CONFIG_DIR := $(HOME)/.config/systemd/user
-SYSTEMD_CONFIG_FILE = $(CONFIG_DIR)/$(TARGET).service
+SYSTEMD_CONFIG_FILE = $(TARGET).service
 INSTALL_DIR := $(HOME)/bin
 
 SOURCES_C := \
@@ -35,11 +35,15 @@ clean:
 	rm -rf ${BUILD_DIR}
 	rm -rf $(CORE_DIR)/*.o
 
-install:
+install: build
 	mkdir -p $(SYSTEMD_CONFIG_DIR)
 	mkdir -p $(INSTALL_DIR)
 	cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR)/
-	cp $(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)
+	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
 	systemctl --user enable $(TARGET)
 
+uninstall:
+	systemctl --user disable $(TARGET)
+	rm $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
+	rm $(INSTALL_DIR)/$(TARGET)
 
