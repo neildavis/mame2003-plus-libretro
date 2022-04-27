@@ -31,13 +31,13 @@ const int kDisplayHeight = 320;
 // Images
 Image bmp_lock= Image(280, 104, BLACK);
 Image bmp_clear_lock= Image(280, 104, BLACK);
-Image bmp_warn = Image(280, 120, BLACK);
-Image bmp_clear_warn = Image(280, 120, BLACK);
+Image bmp_warn = Image(200, 60, BLACK);
+Image bmp_clear_warn = Image(200, 60, BLACK);
 // Positions to place images
 Point point_lock_tl = Point(20, 8);
 Point point_lock_br = Point(299, 111);
-Point point_warn_tl = Point(20, 120);
-Point point_warn_br = Point(299, 239);
+Point point_warn_tl = Point(60, 150);
+Point point_warn_br = Point(259, 209);
 
 bool gLock = false, gDanger = false;
 

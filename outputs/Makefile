@@ -49,6 +49,7 @@ install: build
 	systemctl --user enable $(TARGET)
 
 uninstall:
+	systemctl --user stop $(TARGET) 2> /dev/null || true
 	killall $(TARGET) 2> /dev/null || true
 	systemctl --user disable $(TARGET) 2> /dev/null || true
 	rm $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) 2> /dev/null || true
