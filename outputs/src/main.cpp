@@ -21,6 +21,9 @@ using namespace udd;
 DisplayConfigruation displayConfig;
 DisplayST7789R display = DisplayST7789R();
 
+/* Define GPIO pins for After Burner lamp outputs */
+const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
+
 const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
 // Hence use of Point offsets below
@@ -31,16 +34,9 @@ const int kDisplayHeight = 320;
 // Images
 Image bmp_lock= Image(280, 104, BLACK);
 Image bmp_clear_lock= Image(280, 104, BLACK);
-Image bmp_warn = Image(200, 60, BLACK);
-Image bmp_clear_warn = Image(200, 60, BLACK);
 // Positions to place images
-Point point_lock_tl = Point(20, 8);
-Point point_lock_br = Point(299, 111);
-Point point_warn_tl = Point(60, 150);
-Point point_warn_br = Point(259, 209);
-
-bool gLock = false, gDanger = false;
-
+Point point_lock_tl = Point(20, 68);
+Point point_lock_br = Point(299, 171);
 
 void configureDisplay() {
     displayConfig.width = kDisplayWidth;
@@ -58,6 +54,8 @@ void configureDisplay() {
 
 void initWiringPi() {
 	wiringPiSetupGpio();  // use BCM pin numbers
+	pinMode(GPIO_LAMP_DANGER, OUTPUT);
+    digitalWrite(GPIO_LAMP_DANGER, 0);
 }
 
 void initImages() {
@@ -70,8 +68,6 @@ void initImages() {
     char path[4096];
     sprintf(path, "%s/.local/lrmame2003osvr/lock.bmp", homedir);
     bmp_lock.loadBMP(path, 0, 0);
-    sprintf(path, "%s/.local/lrmame2003osvr/warn.bmp", homedir);
-    bmp_warn.loadBMP(path, 0, 0);
 }
 
 int parseLampOutputName(const char *output_name) {
@@ -91,29 +87,12 @@ int parseLedOutputName(const char *output_name) {
  }
 
  void aburner_lock(bool lock) {
-    if (lock != gLock) {
-        if (lock) {
-            // lock-on gained
-            display.showImage(bmp_lock, point_lock_tl, point_lock_br, DEGREE_270);
-        } else {
-            // lock-on lost 
-            display.showImage(bmp_clear_lock, point_lock_tl, point_lock_br, DEGREE_270);
-        }
-        gLock = lock;
-    }
+    Image &image = lock ? bmp_lock : bmp_clear_lock;
+    display.showImage(image, point_lock_tl, point_lock_br, DEGREE_270);
 }
 
  void aburner_danger(bool danger) {
-    if (danger != gDanger) {
-        if (danger) {
-            // Danger present
-            display.showImage(bmp_warn, point_warn_tl, point_warn_br, DEGREE_270);
-        } else {
-            // Danger cleared
-            display.showImage(bmp_clear_warn, point_warn_tl, point_warn_br, DEGREE_270);
-        }
-        gDanger = danger;
-    }
+    digitalWrite(GPIO_LAMP_DANGER, danger ? 1 : 0);
  }
 
  void aburner_output(const char *output_name, int value) {
