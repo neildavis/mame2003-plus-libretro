@@ -34,13 +34,15 @@ const int kDisplayHeight = 320;
 // Colors
 Color SEGA_BLUE = Color(0, 96, 168);
 // Images
-Image bmp_press_start = Image(260, 115, SEGA_BLUE);
-Image bmp_clear_press_start = Image(260, 115, SEGA_BLUE);
+Image bmp_press_start = Image(260, 115, BLACK);
+Image bmp_clear_press_start = Image(260, 115, BLACK);
 Image bmp_lock = Image(280, 104, BLACK);
 Image bmp_clear_lock = Image(280, 104, BLACK);
 // Positions to place images
 Point point_tl = Point(20, 0);
 Point point_br = Point(299, 239);
+Point point_start_tl = Point(30, 62);
+Point point_start_br = Point(289, 178);
 Point point_lock_tl = Point(20, 68);
 Point point_lock_br = Point(299, 171);
 
@@ -127,8 +129,9 @@ int parseLedOutputName(const char *output_name) {
  }
 
  void aburner_start_led(bool on) {
-     /* TODO: show something on the screen */
- }
+    Image &image = on ? bmp_press_start : bmp_clear_press_start;
+    display.showImage(image, point_start_tl, point_start_br, DEGREE_270);
+}
 
  void aburner_output(const char *output_name, int value) {
     int n;
