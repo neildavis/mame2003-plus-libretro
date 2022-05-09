@@ -561,11 +561,11 @@ static WRITE16_HANDLER( aburner_unknown_w ){
 
 static WRITE16_HANDLER( aburner_lamp_w ){
 
-	/* 
+	
 	if (!bit_equal(aburner_lamp, data, 2)) {
-		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp 
+		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp */
 	}
-	*/
+	
 	if (!bit_equal(aburner_lamp, data, 3)) {
 		output_set_led_value(0, (data >> 2) & 0x01);	/* start lamp */
 	}
