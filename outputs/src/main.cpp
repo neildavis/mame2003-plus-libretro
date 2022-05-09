@@ -174,6 +174,10 @@ int main(int argc, char **argv) {
             }
         }
 
+        /* Blank screen and clear LEDs */
+        display.clearScreen(BLACK);
+        digitalWrite(GPIO_LAMP_DANGER, 0);
+
         /* Close the pipe ready to re-open for next client */
         fprintf(stdout, "%s: Closing pipe\n", argv[0]);
         close(fd);
