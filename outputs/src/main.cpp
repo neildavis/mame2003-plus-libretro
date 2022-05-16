@@ -52,8 +52,8 @@ const char *proc_name = NULL;
 char res_path[4096];
 
 // Splash Screen durations
-const int kSplashScreenDuration = 6;    // seconds
-const int kTitleScreenDuration = 6;     // seconds
+const int kSplashScreenDuration = 5;    // seconds
+const int kTitleScreenDuration = 5;     // seconds
 
 void configureDisplay() {
     displayConfig.width = kDisplayWidth;
