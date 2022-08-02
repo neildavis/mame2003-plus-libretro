@@ -27,9 +27,11 @@ const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
 const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
 // Hence use of Point offsets below
-// It is also rendered in portrait orientation (hence use of DEGREE_270 rotation everywhere!)
+// It is also rendered in portrait orientation (hence use of kDisplayRotation rotation everywhere!)
 const int kDisplayWidth = 240;
 const int kDisplayHeight = 320;
+const Rotation
+ kDisplayRotation = DEGREE_90;
 
 // Colors
 Color SEGA_BLUE = Color(0, 96, 168);
@@ -95,7 +97,7 @@ void show_splash_screen(const char *filename) {
     char path[4096];
     sprintf(path, "%s/%s", res_path, filename);
     splash.loadBMP(path, 0, 0);
-    display.showImage(splash, point_tl, point_br, DEGREE_270);
+    display.showImage(splash, point_tl, point_br, kDisplayRotation);
 }
 
 int parseLampOutputName(const char *output_name) {
@@ -116,7 +118,7 @@ int parseLedOutputName(const char *output_name) {
 
  void aburner_lock(bool lock) {
     Image &image = lock ? bmp_lock : bmp_clear_lock;
-    display.showImage(image, point_lock_tl, point_lock_br, DEGREE_270);
+    display.showImage(image, point_lock_tl, point_lock_br, kDisplayRotation);
 }
 
  void aburner_danger(bool danger) {
@@ -130,7 +132,7 @@ int parseLedOutputName(const char *output_name) {
 
  void aburner_start_led(bool on) {
     Image &image = on ? bmp_press_start : bmp_clear_press_start;
-    display.showImage(image, point_start_tl, point_start_br, DEGREE_270);
+    display.showImage(image, point_start_tl, point_start_br, kDisplayRotation);
 }
 
  void aburner_output(const char *output_name, int value) {
