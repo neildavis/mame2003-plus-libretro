@@ -98,6 +98,7 @@ endif
 
 # Unix
 ifeq ($(platform), unix)
+	LIBS += $(shell pkg-config --libs dbus-1)
 	TARGET = $(TARGET_NAME)_libretro.so
 	fpic = -fPIC
 	CFLAGS += $(fpic)
