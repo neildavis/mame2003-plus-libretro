@@ -690,6 +690,7 @@ wrong.)
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "sndhrdw/taitosnd.h"
+#include "realdashclient.h"
 
 VIDEO_START( taitoz );
 VIDEO_START( spacegun );
@@ -1303,6 +1304,118 @@ static READ16_HANDLER( taitoz_msb_sound_r )
 }
 #endif
 
+/*****************************************************
+                    CHASEHQ: METRICS
+*****************************************************/
+
+/*
+ * Time (Fuel)
+ */
+
+static UINT16 chasehq_time_data = 0;
+static UINT16 chasehq_time_last = 0; /* The last time we recorded */
+static UINT16 chasehq_time_max = 60; /* max time in seconds when you start the game */
+
+static WRITE16_HANDLER( chasehq_time_w )
+{
+	COMBINE_DATA(&chasehq_time_data);
+	/* 	Time is stored at 0x100200. 
+		A 16-bit machine word would be 0x100200-0x100201. 
+		M68000 is big endian, so 0x100200 is MSB
+	*/
+	if (ACCESSING_MSB) {
+		UINT16 timeData = (data & 0xff00) >> 8;
+		/* Time is stored in single byte packed BCD */
+		UINT16 time = 10 * ((timeData & 0xf0) >> 4) + (timeData & 0xf);
+		if (time > chasehq_time_last) {
+			chasehq_time_max = time;	/* time was increased, record the new max value */
+		}
+		chasehq_time_last = time;
+		/* Calculate fuel % from time remaining since last reset */
+		UINT16 fuel_percent = 0;
+		if (chasehq_time_max > 0) {
+			fuel_percent = time * 100 / chasehq_time_max;
+		}
+		if (fuel_percent > 100) {
+			fuel_percent = 100;
+		}
+		RealDashCanClientUpdateFuel(fuel_percent);
+	}
+}
+
+static READ16_HANDLER( chasehq_time_r )
+{
+	return chasehq_time_data;
+}
+
+/*
+ * Speed & Revs (contiguous)
+ */
+
+static UINT16 chasehq_speed_data = 0;
+static UINT16 chasehq_revs_data = 0;
+
+static WRITE16_HANDLER( chasehq_speed_revs_w )
+{
+	if (0 == offset) {
+		/* Speed is stored in single word packed BCD at 0x100400 */
+		COMBINE_DATA(&chasehq_speed_data);
+		UINT16 speedKPH = (100 * ((chasehq_speed_data & 0xf00) >> 8)) + (10 * ((chasehq_speed_data & 0xf0) >> 4)) + (chasehq_speed_data & 0xf);
+		UINT32 speedMPH = speedKPH * 6214 / 10000;
+		RealDashCanClientUpdateSpeed((UINT16)speedMPH);
+	} else {
+		/* Revs is stored in single word at 0x100402
+		   with an absurdly large range of 0x0000-0x5000 
+		   which we will map to 0-8000 decimal */
+		COMBINE_DATA(&chasehq_revs_data);
+		UINT32 revs = data * 8000 / 0x5000;
+		RealDashCanClientUpdateRevs(revs);
+	}
+}
+
+static READ16_HANDLER( chasehq_speed_revs_r )
+{
+	if (0 == offset) {
+		/* Speed is stored in single word packed BCD at 0x100400 */
+		return chasehq_speed_data;
+	} else {
+		/* Revs is stored in single word at 0x100402 */
+		return chasehq_revs_data;
+	}
+}
+
+/*
+ * Gear
+ */
+
+static UINT16 chasehq_gear_data = 0;
+
+static WRITE16_HANDLER( chasehq_gear_w )
+{
+	COMBINE_DATA(&chasehq_gear_data);
+	/* 	Gear is stored at 0x100302. 
+		'Low' = 0x0, 'High' = 0x20, so likely bit 6 of a bit mask
+		A 16-bit machine word would be 0x100302-0x100303. 
+		M68000 is big endian, so 0x100302 is MSB
+	*/
+	if (ACCESSING_MSB) {
+		UINT16 gearData = (data & 0xff00) >> 8;
+		/*
+			RealDash treats gears as numbers, but in our custom dashboards we map:
+				0 = Neutral
+				1 = Low
+				2 = High 
+		*/
+		RealDashCanClientUpdateGear((gearData & 0x20) ? 2 : 1);
+	}
+}
+
+static READ16_HANDLER( chasehq_gear_r )
+{
+	return chasehq_gear_data;
+}
+
+
 /***********************************************************
                    MEMORY STRUCTURES
 ***********************************************************/
@@ -1349,10 +1462,15 @@ static MEMORY_WRITE16_START( contcirc_cpub_writemem )
 	{ 0x200000, 0x200003, taitoz_sound_w },
 MEMORY_END
 
-
 static MEMORY_READ16_START( chasehq_readmem )
 	{ 0x000000, 0x07ffff, MRA16_ROM },
-	{ 0x100000, 0x107fff, MRA16_RAM },	/* main CPUA ram */
+	{ 0x100000, 0x1001ff, MRA16_RAM },	/* main CPUA ram */
+	{ 0x100200, 0x100201, chasehq_time_r },	/* custom handler for 'time' */
+	{ 0x100202, 0x100301, MRA16_RAM },	/* main CPUA ram */
+	{ 0x100302, 0x100303, chasehq_gear_r },	/* custom handler for 'gear' */
+	{ 0x100304, 0x1003ff, MRA16_RAM },	/* main CPUA ram */
+	{ 0x100400, 0x100403, chasehq_speed_revs_r },	/* custom handler for 'speed' & 'revs' */
+	{ 0x100404, 0x107fff, MRA16_RAM },	/* main CPUA ram */
 	{ 0x108000, 0x10bfff, sharedram_r },
 	{ 0x10c000, 0x10ffff, MRA16_RAM },	/* extra CPUA ram */
 	{ 0x400000, 0x400001, chasehq_input_bypass_r },
@@ -1367,7 +1485,13 @@ MEMORY_END
 
 static MEMORY_WRITE16_START( chasehq_writemem )
 	{ 0x000000, 0x07ffff, MWA16_ROM },
-	{ 0x100000, 0x107fff, MWA16_RAM },
+	{ 0x100000, 0x1001ff, MWA16_RAM },
+	{ 0x100200, 0x100201, chasehq_time_w }, /* custom handler for 'time' */
+	{ 0x100202, 0x100301, MWA16_RAM },	/* main CPUA ram */
+	{ 0x100302, 0x100303, chasehq_gear_w},	/* custom handler for 'gear'  */
+	{ 0x100304, 0x1003ff, MWA16_RAM },	/* main CPUA ram */
+	{ 0x100400, 0x100403, chasehq_speed_revs_w },	/* custom handler for 'speed' & 'revs' */
+	{ 0x100404, 0x107fff, MWA16_RAM },
 	{ 0x108000, 0x10bfff, sharedram_w, &taitoz_sharedram, &taitoz_sharedram_size },
 	{ 0x10c000, 0x10ffff, MWA16_RAM },
 	{ 0x400000, 0x400001, TC0220IOC_halfword_portreg_w },
@@ -4481,6 +4605,9 @@ ROM_END
 static DRIVER_INIT( taitoz )
 {
 /*	taitosnd_setz80_soundcpu( 2 );*/
+
+	RealDashCanClientInit();
+	RealDashCanClientStartServer();
 
 	cpua_ctrl = 0xff;
 	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);
