@@ -22,6 +22,9 @@ void RealDashCanClientInit();
 /** d'tor */
 void RealDashCanClientDeinit();
 
+/** Init state getter */
+uint8_t RealDashCanClientIsInitialized();
+
 /** Start CAN server */
 void RealDashCanClientStartServer();
 
