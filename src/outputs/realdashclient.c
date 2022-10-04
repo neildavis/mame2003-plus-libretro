@@ -33,9 +33,11 @@ uint16_t m_revsRpm;
 uint16_t m_speedMph;
 uint16_t m_fuelPercent;
 uint16_t m_gear;
+uint8_t m_initialized;
 
 /** c'tor */
 void RealDashCanClientInit() {
+    m_initialized = 0;
     DBusError err;
     int ret;
     // initialise the errors
@@ -61,12 +63,19 @@ void RealDashCanClientInit() {
     if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret) {
         exit(1);
     }
+    m_initialized = 1;
 }
 
 /** d'tor */
 void RealDashCanClientDeinit() {
     dbus_connection_close(m_conn);
     m_conn = NULL;
+    m_initialized = 0;
+}
+
+/** Init state getter */
+uint8_t RealDashCanClientIsInitialized() {
+    return m_initialized;
 }
 
 /** Start CAN server */

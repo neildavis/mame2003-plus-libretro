@@ -29,6 +29,8 @@
 #include "ost_samples.h"
 #include "vidhrdw/segaic16.h"
 
+#include "realdashclient.h"
+
 static void set_fg_page( int data ){
 	sys16_fg_page[0] = data>>12;
 	sys16_fg_page[1] = (data>>8)&0xf;
@@ -234,6 +236,38 @@ static data16_t *shared_ram;
 static READ16_HANDLER( shared_ram_r ){
 	return shared_ram[offset];
 }
+
+static WRITE16_HANDLER( outrun_shared_ram_w ){
+	COMBINE_DATA( &shared_ram[offset] );
+	if (!RealDashCanClientIsInitialized())
+		return;
+	/* Speed KpH is at 0x260068, 0x68 BYTES offset == 0x34 MACHINE WORDS offset */
+	if (0x34 == offset) {
+		UINT32 speedMPH = data * 6214 / 10000;
+		RealDashCanClientUpdateSpeed((UINT16)(speedMPH & 0xffff));
+	} 
+	/* Revs is at 0x260783 which is LSB of machine word at 0x260782 on M68000 (big endian 16-bit)
+	   0x782 BYTES offset == 0x3c1 MACHINE WORDS offset
+	*/
+	else if (0x3c1 == offset && ACCESSING_LSB) {
+		/* Revs is in range 0-0xff (255) so we map to 0-8000 decimal */
+		UINT32 revsMapped = (data & 0xff) * 8000 / 0xff;
+		RealDashCanClientUpdateRevs(revsMapped);
+	}
+	/* Gear is lsb of byte at 0x260773 which is LSB of machine word at 0x260772 on M68000 (big endian 16-bit)
+	   0x772 BYTES offset == 0x3b9 MACHINE WORDS offset
+	*/
+	else if (0x3b9 == offset && ACCESSING_LSB16) {
+		/*
+			RealDash treats gears as numbers, but in our custom dashboards we map:
+				0 = Neutral
+				1 = Low
+				2 = High 
+		*/
+		RealDashCanClientUpdateGear((data & 0x1) + 1);
+	}
+}
+
 static WRITE16_HANDLER( shared_ram_w ){
 	COMBINE_DATA( &shared_ram[offset] );
 }
@@ -760,11 +794,48 @@ static void outrun_reset(void)
 	   cpu_set_halt_line(2, CLEAR_LINE);
 }
 
+/**************************************
+ *  Out Run Time handler
+ *************************************/
+
+static UINT16 outrun_time_data = 0;
+static UINT16 outrun_time_last = 0; /* The last time we recorded */
+static UINT16 outrun_time_max = 75; /* max time in seconds when you start the game */
+
+static READ16_HANDLER( outrun_time_r )
+{
+	return outrun_time_data;
+}
+
+static WRITE16_HANDLER( outrun_time_w )
+{
+	COMBINE_DATA( &outrun_time_data );
+	/* Time is stored in single byte packed BCD */
+	if (ACCESSING_LSB) {
+		UINT16 time = 10 * ((data & 0x00f0) >> 4) + (data & 0x000f);
+		if (time > outrun_time_last) {
+			outrun_time_max = time;	/* time was increased, record the new max value */
+		}
+		outrun_time_last = time;
+		/* Calculate fuel % from time remaining since last reset */
+		UINT16 fuel_percent = 0;
+		if (outrun_time_max > 0) {
+			fuel_percent = time * 100 / outrun_time_max;
+		}
+		if (fuel_percent > 100) {
+			fuel_percent = 100;
+		}
+		RealDashCanClientUpdateFuel(fuel_percent);
+	}
+}
 
 static MEMORY_READ16_START( outrun_readmem )
 	{ 0x000000, 0x05ffff, MRA16_ROM },
 	{ 0x060900, 0x060907, sound_shared_ram_r },		/*??? */
-	{ 0x060000, 0x067fff, SYS16_MRA16_EXTRAM2 },
+	
+	{ 0x060000, 0x060859, SYS16_MRA16_EXTRAM2 },
+	{ 0x060860, 0x060861, outrun_time_r },
+	{ 0x060862, 0x067fff, SYS16_MRA16_EXTRAM2 },
 
 	{ 0x100000, 0x10ffff, SYS16_MRA16_TILERAM },
 	{ 0x110000, 0x110fff, SYS16_MRA16_TEXTRAM },
@@ -785,7 +856,11 @@ MEMORY_END
 static MEMORY_WRITE16_START( outrun_writemem )
 	{ 0x000000, 0x05ffff, MWA16_ROM },
 	{ 0x060900, 0x060907, sound_shared_ram_w },		/*??? */
-	{ 0x060000, 0x067fff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
+
+	{ 0x060000, 0x060859, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
+	{ 0x060860, 0x060861, outrun_time_w },
+	{ 0x060862, 0x067fff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
+
 	{ 0x100000, 0x10ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
 	{ 0x110000, 0x110fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
 	{ 0x130000, 0x130fff, SYS16_MWA16_SPRITERAM, &sys16_spriteram },
@@ -794,7 +869,7 @@ static MEMORY_WRITE16_START( outrun_writemem )
 	{ 0x140020, 0x140021, outrun_ctrl2_w },
 	{ 0x140030, 0x140031, outrun_analog_select_w },
 	{ 0x200000, 0x23ffff, MWA16_ROM },
-	{ 0x260000, 0x267fff, shared_ram_w, &shared_ram },
+	{ 0x260000, 0x267fff, outrun_shared_ram_w, &shared_ram },
 	{ 0xffff06, 0xffff07, outrun_sound_write_w },
 MEMORY_END
 
@@ -905,6 +980,8 @@ static void outrun_update_proc( void ){
 }
 
 static MACHINE_INIT( outrun ){
+	RealDashCanClientInit();
+	RealDashCanClientStartServer();
 	static int bank[8] = {
 		7,0,1,2,
 		3,4,5,6
