@@ -161,7 +161,7 @@ static MEMORY_READ_START( turbo_readmem )
 	{ 0x0000, 0x5fff, MRA_ROM },
 	{ 0xb000, 0xb1ff, MRA_RAM },
 	{ 0xe000, 0xe7ff, MRA_RAM },
-	{ 0xf000, 0xf7ff, MRA_RAM },
+	{ 0xf000, 0xf7ff, turbo_ram_r },
 	{ 0xf800, 0xf803, ppi8255_0_r },
 	{ 0xf900, 0xf903, ppi8255_1_r },
 	{ 0xfa00, 0xfa03, ppi8255_2_r },
@@ -180,7 +180,7 @@ static MEMORY_WRITE_START( turbo_writemem )
 	{ 0xb800, 0xb800, MWA_NOP },	/* resets the analog wheel value */
 	{ 0xe000, 0xe7ff, MWA_RAM, &videoram, &videoram_size },
 	{ 0xe800, 0xe800, turbo_collision_clear_w },
-	{ 0xf000, 0xf7ff, MWA_RAM },
+	{ 0xf000, 0xf7ff, turbo_ram_w },
 	{ 0xf800, 0xf803, ppi8255_0_w },
 	{ 0xf900, 0xf903, ppi8255_1_w },
 	{ 0xfa00, 0xfa03, ppi8255_2_w },
