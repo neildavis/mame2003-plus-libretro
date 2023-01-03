@@ -1,6 +1,6 @@
 TARGET := lrmame2003osvr
 
-CFLAGS := -O2 -Wall -Wextra
+CPPFLAGS := -O3 -Wall -Wextra
 LDFLAGS ?=
 LIBS ?= -lwiringPi -lwiringPiUDDrpi
 CC := g++
@@ -8,6 +8,7 @@ CC := g++
 ARM := 1
 LD = ${CC}
 
+INC_DIR		:= inc
 CORE_DIR    := src
 BUILD_DIR	:= build
 CONFIG_DIR	:= config
@@ -17,14 +18,19 @@ SYSTEMD_CONFIG_FILE = $(TARGET).service
 INSTALL_DIR_BIN := $(HOME)/bin
 INSTALL_DIR_RES := $(HOME)/.local/$(TARGET)
 
+CPPFLAGS += -I$(INC_DIR)
+
 SOURCES_C := \
-	$(CORE_DIR)/main.cpp
+	$(CORE_DIR)/main.cpp \
+	$(CORE_DIR)/utils.cpp \
+	$(CORE_DIR)/turbo.cpp \
+	$(CORE_DIR)/afterburner.cpp
 
-OBJECTS := $(SOURCES_C:.c=.o)
+OBJECTS := $(SOURCES_C:.cpp=.o)
 
-%.o: %.c
-	@echo Compiling $<...
-	$(CC) -c -o $@ $< $(CFLAGS)
+%.o: %.cpp
+	@echo Compiling $< ...
+	$(CC) -c $(CPPFLAGS) $< -o $@  
 
 $(TARGET): $(OBJECTS)
 	mkdir -p $(BUILD_DIR)

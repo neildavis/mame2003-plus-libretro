@@ -8,6 +8,7 @@
 #include "machine/8255ppi.h"
 #include "turbo.h"
 #include "artwork.h"
+#include "output.h"
 
 /* globals */
 UINT8 turbo_opa, turbo_opb, turbo_opc;
@@ -423,6 +424,12 @@ MACHINE_INIT( turbo )
 	segment_address = segment_increment = 0;
 	segment_init = 1;
 	port_8279 = 1;
+	output_init("turbo");
+}
+
+MACHINE_STOP( turbo )
+{
+	output_stop();
 }
 
 
@@ -456,12 +463,14 @@ MACHINE_INIT( buckrog )
 
 READ_HANDLER( turbo_ram_r )
 {
-	return cpu_bankbase[STATIC_RAM][0xf000 + offset];
+	offs_t addr = 0xf000 + offset;
+	return cpu_bankbase[STATIC_RAM][addr];
 }
 
 WRITE_HANDLER( turbo_ram_w )
 {
-	cpu_bankbase[STATIC_RAM][0xf000 + offset] = data;
+	offs_t addr = 0xf000 + offset;
+	cpu_bankbase[STATIC_RAM][addr] = data;
 }
 
 /*******************************************

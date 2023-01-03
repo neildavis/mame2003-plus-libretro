@@ -5,7 +5,7 @@ LIBDBUS_INCFLAGS=$(shell pkg-config --cflags-only-I dbus-1)
 INCFLAGS := \
 	-I. \
 	-I$(CORE_DIR) \
-	-I$(OUTPUTS_DIR) \
+	-I$(OUTPUTS_DIR)/inc \
 	-I$(CORE_DIR)/includes \
 	-I$(CORE_DIR)/outputs \
 	-I$(CORE_DIR)/cpu/m68000 \
