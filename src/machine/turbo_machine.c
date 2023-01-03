@@ -448,7 +448,21 @@ MACHINE_INIT( buckrog )
 	port_8279 = 1;
 }
 
+/********************************************
+ * 
+ * ND: Turbo RAM handlers
+ * 
+ * *****************************************/
 
+READ_HANDLER( turbo_ram_r )
+{
+	return cpu_bankbase[STATIC_RAM][0xf000 + offset];
+}
+
+WRITE_HANDLER( turbo_ram_w )
+{
+	cpu_bankbase[STATIC_RAM][0xf000 + offset] = data;
+}
 
 /*******************************************
 
