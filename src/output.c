@@ -37,6 +37,10 @@ void output_init(const char *machine_name) {
 
 	if (!fd_outputs) {
 		fd_outputs = open(OUTPUTS_PIPE_NAME, O_WRONLY | O_NONBLOCK);
+		if (fd_outputs > -1) {
+			// Successfully opened pipe. Send a special 'hello' output to allow server to initialize for specific ROM
+			output_set_value(OUTPUTS_INIT_NAME, 0);
+		}
 	}
 }
 
@@ -46,6 +50,7 @@ void output_init(const char *machine_name) {
 
 void output_stop() {
 	if (fd_outputs) {
+		output_set_value(OUTPUTS_STOP_NAME, 0);
 		close(fd_outputs);
 		fd_outputs = 0;
 	}

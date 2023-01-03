@@ -22,6 +22,18 @@
 #define OUTPUTS_BUF_FMT "%s %s %d"
 
 /*
+ Non-ROM-specific output values
+*/
+
+/* When outputs are initilazed, this output is sent immediatley 
+   to allow server to initialize for specific ROM*/
+#define OUTPUTS_INIT_NAME "hello"
+
+/* When outputs are stopped, this output is sent 
+   to allow server to clear up for specific ROM*/
+#define OUTPUTS_STOP_NAME "goodbye"
+
+/*
  After Burner Output Values
 */
 
