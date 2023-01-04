@@ -70,10 +70,9 @@ void output_set_value(const char *outname, INT32 value) {
 	if (fd_outputs) {
 		char buf[OUTPUTS_PIPE_MAX_BUF_SIZE];
 		sprintf(buf, OUTPUTS_BUF_FMT, outputs_machine_name, outname, value);
-		write(fd_outputs, buf, strlen(buf)+1);
+		write(fd_outputs, buf, strlen(buf));
 	}
 }
-
 
 /*-------------------------------------------------
     output_set_indexed_value - set the value of an

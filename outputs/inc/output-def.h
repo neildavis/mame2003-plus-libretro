@@ -19,7 +19,7 @@
  2. The output name e.g. "lamp1"
  3. The output value, e.g. 1
 */
-#define OUTPUTS_BUF_FMT "%s %s %d"
+#define OUTPUTS_BUF_FMT "%s:%s:%d"
 
 /*
  Non-ROM-specific output values
