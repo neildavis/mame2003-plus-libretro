@@ -19,7 +19,6 @@ MACHINE_INIT( subroc3d );
 MACHINE_INIT( buckrog );
 
 /* ND: Turbo RAM handlers */
-READ_HANDLER( turbo_ram_r );
 WRITE_HANDLER( turbo_ram_w );
 
 READ_HANDLER( turbo_8279_r );
