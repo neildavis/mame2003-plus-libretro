@@ -9,6 +9,7 @@
 #include "turbo.h"
 #include "artwork.h"
 #include "output.h"
+#include "output-def.h"
 
 /* globals */
 UINT8 turbo_opa, turbo_opb, turbo_opc;
@@ -461,16 +462,82 @@ MACHINE_INIT( buckrog )
  * 
  * *****************************************/
 
-READ_HANDLER( turbo_ram_r )
+data8_t last_yellow_flag = 0;
+
+INLINE void turbo_status_indicator_write(data8_t data)
 {
-	offs_t addr = 0xf000 + offset;
-	return cpu_bankbase[STATIC_RAM][addr];
+		/* 
+			The meaning of the value stored at 0xf258 depends on
+		   	the bitfield flags stored at 0xf244 
+		*/
+		data8_t flags = cpu_bankbase[STATIC_RAM][0xf244];
+		if (flags & (1 << 7))
+		{
+			/* when flags at 0xf244 have bit 8 set, 0xf258 contains the ambulance yellow flag state: 0-0xa */
+			last_yellow_flag = data;
+			output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, data);
+		}
+		else 
+		{
+			if (last_yellow_flag > 0)
+			{
+				/* This is just a rest of yellow flag now that flags at 0xf244 have been cleared*/
+				last_yellow_flag = 0;
+				output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, 0);
+			}
+			else
+			{
+				/* otherwise, 0xf258 contains the start lights sequence state: 0-4 */
+				output_set_value(OUTPUT_TURBO_RACE_START_LIGHTS_NAME, data);
+			}
+		}
+}
+
+INLINE void turbo_status_flags_write(data8_t data)
+{
+	/* 
+		when flags have bit 3 set the start button is on
+		TODO: also occurs in game so dependent on flags elsewhere!
+	*/
+	//output_set_led_value(TURBO_LED_START, data & (1 << 3));
 }
 
 WRITE_HANDLER( turbo_ram_w )
 {
 	offs_t addr = 0xf000 + offset;
 	cpu_bankbase[STATIC_RAM][addr] = data;
+
+	if (0xf212 == addr)
+	{
+		/* 0xf212 contains the time remaining */
+		output_set_value(OUTPUT_TURBO_TIME_NAME, data);
+	}
+	else if (0xf214 == addr)
+	{
+		/* 0xf214 contains the number of lives (after initial period) */
+		output_set_value(OUTPUT_TURBO_LIVES_NAME, data);
+	}
+	else if (0xf220 == addr)
+	{
+		/* 0xf220 contains the current stage (zero indexed) */
+		output_set_value(OUTPUT_TURBO_STAGE_NAME, data);
+	}
+	else if (0xf221 == addr)
+	{
+		/* 0xf221 contains the number of cars passed */
+		output_set_value(OUTPUT_TURBO_CARS_PASSED_NAME, data);
+	}
+	else if (0xf258 == addr) 
+	{
+		/* 0xf258 handles various game status indicators */
+		turbo_status_indicator_write(data);
+	}
+	else if (0xf259 == addr) 
+	{
+		/* 0xf258 handles various game flags */
+		turbo_status_flags_write(data);
+	}
+
 }
 
 /*******************************************
