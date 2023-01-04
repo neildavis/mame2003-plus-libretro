@@ -11,7 +11,7 @@
 
 #include "utils.h"
 #include "output-def.h"
-#include "afterburner.h"
+#include "aburner.h"
 #include "turbo.h"
 
 void main_event_loop() {
@@ -81,6 +81,6 @@ int main(int argc, char **argv) {
         exit(errno);
     }
 
-    /* Run the main evenbt loop forever */
+    /* Run the main event loop forever */
     main_event_loop();
 }

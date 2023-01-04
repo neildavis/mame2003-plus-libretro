@@ -24,7 +24,7 @@ SOURCES_C := \
 	$(CORE_DIR)/main.cpp \
 	$(CORE_DIR)/utils.cpp \
 	$(CORE_DIR)/turbo.cpp \
-	$(CORE_DIR)/afterburner.cpp
+	$(CORE_DIR)/aburner.cpp
 
 OBJECTS := $(SOURCES_C:.cpp=.o)
 
