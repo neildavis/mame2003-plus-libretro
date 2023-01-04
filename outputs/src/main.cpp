@@ -29,6 +29,11 @@ void main_event_loop() {
             fprintf(stderr, "%s: Unable to open FIFO pipe for reading at %s errno=%d\n", proc_name, OUTPUTS_PIPE_NAME, errno);
             exit(errno);
         }
+        FILE *stream = fdopen(fd, "r");
+        if (NULL == stream) {
+            fprintf(stderr, "%s: Unable to open FIFO pipe stream for reading. errno=%d\n", proc_name, errno);
+            exit(errno);
+        }
 
         /* Continually read output commands from the pipe */
         struct pollfd pfd;
@@ -42,8 +47,7 @@ void main_event_loop() {
                 fprintf(stdout, "%s: Client hung-up pipe\n", proc_name);
                 break;
             }
-            n = read(fd, buf, sizeof(buf));
-            if (n > 0 && 3 == sscanf(buf, OUTPUTS_BUF_FMT, machine_name, output_name, &output_value)) {
+            if (3 == fscanf(stream, "%[^:]:%[^:]:%d", machine_name, output_name, &output_value)) {
                 /* We successfully read an output command */
                 fprintf(stdout, "%s: Read output %s=%d for machine '%s'\n", proc_name, output_name, output_value, machine_name);
                 if (0 == strcmp(machine_name, "aburner")) {
@@ -52,10 +56,14 @@ void main_event_loop() {
                 } else if (0 == strcmp(machine_name, "turbo")) {
                     turbo_output(output_name, output_value);
                 }
+            } else {
+                fprintf(stdout, "%s: Failed to scan\n", proc_name);
             }
         }
 
         /* Close the pipe ready to re-open for next client */
+        fprintf(stdout, "%s: Closing stream\n", proc_name);
+        fclose(stream);
         fprintf(stdout, "%s: Closing pipe\n", proc_name);
         close(fd);
     }
