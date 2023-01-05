@@ -462,14 +462,6 @@ MACHINE_INIT( buckrog )
  * 
  * *****************************************/
 
-INLINE bool turbo_attract_mode() {
-	/* 
-		During attract mode, 0xf20a has bit 1 set
-		Only applies during attract 'gameplay', not other states (start/scores)
-	*/
-	return (cpu_bankbase[STATIC_RAM][0xf20a] & 0x1) == 0x1;
-}
-
 INLINE bool turbo_yellow_flags_active() {
 	/* when flags at 0xf244 have bit 8 set, the ambulance yellow flags are active */
 	return (cpu_bankbase[STATIC_RAM][0xf244] & (1 << 7)) != 0;
@@ -510,9 +502,16 @@ INLINE void turbo_status_flags_write(data8_t data) {
 
 WRITE_HANDLER( turbo_ram_w ) {
 	offs_t addr = 0xf000 + offset;
+	data8_t data_prev = cpu_bankbase[STATIC_RAM][addr];
 	cpu_bankbase[STATIC_RAM][addr] = data;
 
-	if (0xf212 == addr) {
+	if (0xf20a == addr && (data & 0x1) != (data_prev & 0x1)) {
+		/* 
+			During attract mode, 0xf20a has bit 1 set
+			Only applies during attract 'gameplay', not other states (start/scores)
+		*/
+		output_set_value(OUTPUT_TURBO_ATTRACT_MODE_NAME, (data & 0x1));
+	} else if (0xf212 == addr) {
 		/* 0xf212 contains the time remaining */
 		output_set_value(OUTPUT_TURBO_TIME_NAME, data);
 	} else if (0xf214 == addr) {
