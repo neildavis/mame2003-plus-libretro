@@ -462,79 +462,74 @@ MACHINE_INIT( buckrog )
  * 
  * *****************************************/
 
+INLINE bool turbo_attract_mode() {
+	/* 
+		During attract mode, 0xf20a has bit 1 set
+		Only applies during attract 'gameplay', not other states (start/scores)
+	*/
+	return (cpu_bankbase[STATIC_RAM][0xf20a] & 0x1) == 0x1;
+}
+
+INLINE bool turbo_yellow_flags_active() {
+	/* when flags at 0xf244 have bit 8 set, the ambulance yellow flags are active */
+	return (cpu_bankbase[STATIC_RAM][0xf244] & (1 << 7)) != 0;
+}
+
+INLINE bool turbo_start_screen_active() {
+	/* 0xf227 == 0x66 when the 'press start button' screen is active */
+	return (cpu_bankbase[STATIC_RAM][0xf227]) == 0x66;
+}
+
 data8_t last_yellow_flag = 0;
 
-INLINE void turbo_status_indicator_write(data8_t data)
-{
-		/* 
-			The meaning of the value stored at 0xf258 depends on
-		   	the bitfield flags stored at 0xf244 
-		*/
-		data8_t flags = cpu_bankbase[STATIC_RAM][0xf244];
-		if (flags & (1 << 7))
-		{
-			/* when flags at 0xf244 have bit 8 set, 0xf258 contains the ambulance yellow flag state: 0-0xa */
-			last_yellow_flag = data;
-			output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, data);
-		}
-		else 
-		{
-			if (last_yellow_flag > 0)
-			{
-				/* This is just a rest of yellow flag now that flags at 0xf244 have been cleared*/
-				last_yellow_flag = 0;
-				output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, 0);
-			}
-			else
-			{
-				/* otherwise, 0xf258 contains the start lights sequence state: 0-4 */
-				output_set_value(OUTPUT_TURBO_RACE_START_LIGHTS_NAME, data);
-			}
-		}
+INLINE void turbo_status_indicator_write(data8_t data) {
+	/* The meaning of the value stored at 0xf258 depends on game state flags */
+	if (turbo_yellow_flags_active()) {
+		last_yellow_flag = data;
+		output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, data);
+	} else if (last_yellow_flag > 0) {
+		/* This is just a reset of yellow flag now that flags at 0xf244 have been cleared*/
+		last_yellow_flag = 0;
+		output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, 0);
+	}
+	else {
+		/* otherwise, 0xf258 contains the start lights sequence state: 0-4 */
+		output_set_value(OUTPUT_TURBO_RACE_START_LIGHTS_NAME, data);
+	}
 }
 
-INLINE void turbo_status_flags_write(data8_t data)
-{
+INLINE void turbo_status_flags_write(data8_t data) {
 	/* 
-		when flags have bit 3 set the start button is on
-		TODO: also occurs in game so dependent on flags elsewhere!
+		when flags have bit 4 set the start button is on
+		but ONLY if we're in the start screen.
 	*/
-	//output_set_led_value(TURBO_LED_START, data & (1 << 3));
+	if (turbo_start_screen_active()) {
+		output_set_led_value(TURBO_LED_START, data & (1 << 3));
+	}
 }
 
-WRITE_HANDLER( turbo_ram_w )
-{
+WRITE_HANDLER( turbo_ram_w ) {
 	offs_t addr = 0xf000 + offset;
 	cpu_bankbase[STATIC_RAM][addr] = data;
 
-	if (0xf212 == addr)
-	{
+	if (0xf212 == addr) {
 		/* 0xf212 contains the time remaining */
 		output_set_value(OUTPUT_TURBO_TIME_NAME, data);
-	}
-	else if (0xf214 == addr)
-	{
+	} else if (0xf214 == addr) {
 		/* 0xf214 contains the number of lives (after initial period) */
 		output_set_value(OUTPUT_TURBO_LIVES_NAME, data);
 	}
-	else if (0xf220 == addr)
-	{
+	else if (0xf220 == addr) {
 		/* 0xf220 contains the current stage (zero indexed) */
 		output_set_value(OUTPUT_TURBO_STAGE_NAME, data);
-	}
-	else if (0xf221 == addr)
-	{
+	} else if (0xf221 == addr) {
 		/* 0xf221 contains the number of cars passed */
 		output_set_value(OUTPUT_TURBO_CARS_PASSED_NAME, data);
-	}
-	else if (0xf258 == addr) 
-	{
+	} else if (0xf258 == addr) {
 		/* 0xf258 handles various game status indicators */
 		turbo_status_indicator_write(data);
-	}
-	else if (0xf259 == addr) 
-	{
-		/* 0xf258 handles various game flags */
+	} else if (0xf259 == addr)  {
+		/* 0xf259 handles various game flags */
 		turbo_status_flags_write(data);
 	}
 
