@@ -1,8 +1,8 @@
 TARGET := lrmame2003osvr
 
-CPPFLAGS := -O3 -Wall -Wextra
+CPPFLAGS := -O3 -Wall -Wextra -std=c++11
 LDFLAGS ?=
-LIBS ?= -lwiringPi -lwiringPiUDDrpi
+LIBS ?= -lwiringPi -lwiringPiUDDrpi -lgpiodcxx -lTM1637Pi -ldl
 CC := g++
 
 ARM := 1
@@ -27,10 +27,13 @@ SOURCES_C := \
 	$(CORE_DIR)/aburner.cpp
 
 OBJECTS := $(SOURCES_C:.cpp=.o)
+DEPS := $(SOURCES_C:.cpp=.d)
+
+
 
 %.o: %.cpp
 	@echo Compiling $< ...
-	$(CC) -c $(CPPFLAGS) $< -o $@  
+	$(CC) -MMD -MP -c $(CPPFLAGS) $< -o $@  
 
 $(TARGET): $(OBJECTS)
 	mkdir -p $(BUILD_DIR)
@@ -42,6 +45,7 @@ build: $(TARGET)
 
 clean:
 	rm -rf ${BUILD_DIR}
+	rm -rf $(CORE_DIR)/*.d
 	rm -rf $(CORE_DIR)/*.o
 
 install: build
@@ -62,3 +66,4 @@ uninstall:
 	rm -rf $(INSTALL_DIR_RES)
 	rm $(INSTALL_DIR_BIN)/$(TARGET) 2> /dev/null || true
 
+-include $(DEPS)

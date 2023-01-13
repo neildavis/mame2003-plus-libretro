@@ -50,6 +50,8 @@
 #define OUTPUT_TURBO_CREDITS_NAME "credits" 
 /* Attract Mode Gameplay active (does not include start/scoreboard screens)*/
 #define OUTPUT_TURBO_ATTRACT_MODE_NAME "attract" 
+/* Start Screen active */
+#define OUTPUT_TURBO_START_SCREEN_NAME "strtscr" 
 /* Race start lights: 0=none, 1-3=reds, 4=green */
 #define OUTPUT_TURBO_RACE_START_LIGHTS_NAME "strtlght" 
 /* Ambulance Yellow Flags: range=0-0xa: 0=none, odd=left, even=right */
