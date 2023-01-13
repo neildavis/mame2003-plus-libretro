@@ -46,6 +46,8 @@
  Turbo Output Values
 */
 
+/* Number of credits */
+#define OUTPUT_TURBO_CREDITS_NAME "credits" 
 /* Attract Mode Gameplay active (does not include start/scoreboard screens)*/
 #define OUTPUT_TURBO_ATTRACT_MODE_NAME "attract" 
 /* Race start lights: 0=none, 1-3=reds, 4=green */

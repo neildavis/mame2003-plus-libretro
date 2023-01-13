@@ -505,7 +505,10 @@ WRITE_HANDLER( turbo_ram_w ) {
 	data8_t data_prev = cpu_bankbase[STATIC_RAM][addr];
 	cpu_bankbase[STATIC_RAM][addr] = data;
 
-	if (0xf20a == addr && (data & 0x1) != (data_prev & 0x1)) {
+	if (0xf200 == addr) {
+		/* 0xf200 contains the number of credits */
+		output_set_value(OUTPUT_TURBO_CREDITS_NAME, data);
+	} else if (0xf20a == addr && (data & 0x1) != (data_prev & 0x1)) {
 		/* 
 			During attract mode, 0xf20a has bit 1 set
 			Only applies during attract 'gameplay', not other states (start/scores)
