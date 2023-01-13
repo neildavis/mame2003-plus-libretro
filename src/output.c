@@ -25,7 +25,8 @@
 -------------------------------------------------*/
 
 char outputs_machine_name[OUTPUTS_PIPE_MAX_MACHINE_NAME_SIZE];
-int fd_outputs;
+int fd_outputs = -1;
+FILE *stream_outputs = NULL;
 
 void output_init(const char *machine_name) {
 	if (outputs_machine_name != machine_name && strlen(machine_name) > 0) {
@@ -35,11 +36,18 @@ void output_init(const char *machine_name) {
 		strcpy(outputs_machine_name, "unknown");	
 	}
 
-	if (!fd_outputs) {
+	if (fd_outputs < 0) {
 		fd_outputs = open(OUTPUTS_PIPE_NAME, O_WRONLY | O_NONBLOCK);
 		if (fd_outputs > -1) {
-			// Successfully opened pipe. Send a special 'hello' output to allow server to initialize for specific ROM
-			output_set_value(OUTPUTS_INIT_NAME, 0);
+			// Successfully opened pipe. Now get a FILE stream
+			stream_outputs = fdopen(fd_outputs, "w");
+			if (NULL == stream_outputs) {
+				close(fd_outputs);
+				fd_outputs = -1;
+			} else {
+				//Send a special 'hello' output to allow server to initialize for specific ROM
+				output_set_value(OUTPUTS_INIT_NAME, 0);
+			}
 		}
 	}
 }
@@ -49,10 +57,14 @@ void output_init(const char *machine_name) {
 -------------------------------------------------*/
 
 void output_stop() {
-	if (fd_outputs) {
+	if (stream_outputs) {
 		output_set_value(OUTPUTS_STOP_NAME, 0);
+		fclose(stream_outputs);
+		stream_outputs = NULL;
+	}
+	if (fd_outputs > -1) {
 		close(fd_outputs);
-		fd_outputs = 0;
+		fd_outputs = -1;
 	}
 	outputs_machine_name[0] = 0;
 }
@@ -63,14 +75,13 @@ void output_stop() {
 -------------------------------------------------*/
 
 void output_set_value(const char *outname, INT32 value) {
-	if (!fd_outputs && strlen(outputs_machine_name) > 0) {
+	if (!stream_outputs && strlen(outputs_machine_name) > 0) {
 		/* outputs were initialized, but the pipe failed to open. Try again */
 		output_init(outputs_machine_name);
 	}
-	if (fd_outputs) {
-		char buf[OUTPUTS_PIPE_MAX_BUF_SIZE];
-		sprintf(buf, OUTPUTS_BUF_FMT, outputs_machine_name, outname, value);
-		write(fd_outputs, buf, strlen(buf));
+	if (stream_outputs) {
+		fprintf(stream_outputs, OUTPUTS_BUF_FMT, outputs_machine_name, outname, value);
+		fflush(stream_outputs);
 	}
 }
 
