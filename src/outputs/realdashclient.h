@@ -1,18 +1,19 @@
-//
-//  realdashclient.h
-//
-//  Created by Neil Davis on 17/03/2019.
-//  See license.txt for more details.
-//
+/*
+  realdashclient.h
+
+  Created by Neil Davis on 17/03/2019.
+  See license.txt for more details.
+*/
 
 #ifndef realdashclient_h
 #define realdashclient_h
 
 #include <stdint.h>
 
-//
-// Constants
-//
+/*
+ Constants:
+*/
+
 /** Maximum revs */
 extern const uint16_t RD_MAX_REVS_RPM;
 

@@ -1,34 +1,34 @@
-//
-//  realdashclient.c
-//
-//  Created by Neil Davis on 17/03/2019.
-//  See license.txt for more details.
-//
+/*
+  realdashclient.c
+
+  Created by Neil Davis on 17/03/2019.
+  See license.txt for more details.
+*/
 
 #include "realdashclient.h"
 #include <dbus/dbus.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-// fwd delcs
+/* fwd delcs */
 void dbusMethodCallSync(const char *methodName);
 void dbusMethodCallIgnoreReturn(const char *methodName, int type, const void *value);
 
-//
-// Constants
-//
+/*
+ Constants:
+*/
 const uint16_t RD_MAX_REVS_RPM = 9000;
 
-// Client DBus config
+/* Client DBus config */
 #define DBUS_SERVICE_NAME "nd.mame2010.main"
-// RealDashCanServerQt DBus config
+/* RealDashCanServerQt DBus config */
 #define CAN_SERVER_SERVICE_NAME "nd.realdash.canserver"
 #define CAN_SERVER_INTERFACE    "nd.realdash.canserver.DashBoard"
 #define CAN_SERVER_OBJECT_PATH  "/nd/realdash/canserver"
 
-// DBus connection
+/* DBus connection */
 struct DBusConnection *m_conn;
-// Internal cached data values
+/* Internal cached data values */
 uint16_t m_revsRpm;
 uint16_t m_speedMph;
 uint16_t m_fuelPercent;
@@ -40,10 +40,10 @@ void RealDashCanClientInit() {
     m_initialized = 0;
     DBusError err;
     int ret;
-    // initialise the errors
+    /* initialise the errors */
     dbus_error_init(&err);
     
-    // connect to the bus
+    /* connect to the bus */
     m_conn = dbus_bus_get_private(DBUS_BUS_SESSION, &err);
     if (dbus_error_is_set(&err)) {
         fprintf(stderr, "Connection Error (%s)\n", err.message);
@@ -52,7 +52,7 @@ void RealDashCanClientInit() {
     if (NULL == m_conn) {
         exit(1);
     }
-    // request a name on the bus
+    /* request a name on the bus */
     ret = dbus_bus_request_name(m_conn, DBUS_SERVICE_NAME,
                                 DBUS_NAME_FLAG_REPLACE_EXISTING
                                 , &err);
@@ -129,41 +129,41 @@ void RealDashCanClientResetDefaults()
     RealDashCanClientUpdateGear(0);
 }
 
-//
-// Private methods
-//
+/*
+ Private methods
+*/
 
 void dbusMethodCallSync(const char *methodName) {
-    DBusMessage* msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME, // target for the method call
-                                       CAN_SERVER_OBJECT_PATH, // object to call on
-                                       CAN_SERVER_INTERFACE, // interface to call on
-                                       methodName); // method name
+    DBusMessage* msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME,
+                                       CAN_SERVER_OBJECT_PATH,
+                                       CAN_SERVER_INTERFACE,
+                                       methodName);
     if (NULL == msg) {
         fprintf(stderr, "Message Null\n");
         exit(1);
     }
     
-    // send message and get a handle for a reply
+    /* send message and get a handle for a reply */
     DBusPendingCall* pending = NULL;
     if (!dbus_connection_send_with_reply (m_conn, msg, &pending, -1)) {
         fprintf(stderr, "Out Of Memory!\n");
-        // free message
+        /* free message */
         dbus_message_unref(msg);
         return;
     }
     if (NULL == pending) {
         fprintf(stderr, "Pending Call Null\n");
-        // free message
+         /* free message */
         dbus_message_unref(msg);
         return;
     }
     dbus_connection_flush(m_conn);
     
-    // free message
+    /* free message */
     dbus_message_unref(msg);
-    // block until we receive a reply
+    /* block until we receive a reply */
     dbus_pending_call_block(pending);
-    // free the pending message handle
+    /*  free the pending message handle */
     dbus_pending_call_unref(pending);
 }
 
@@ -171,34 +171,34 @@ void dbusMethodCallIgnoreReturn(const char *methodName, int type, const void *va
     DBusMessage* msg;
     DBusMessageIter args;
     
-    msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME, // target for the method call
-                                       CAN_SERVER_OBJECT_PATH, // object to call on
-                                       CAN_SERVER_INTERFACE, // interface to call on
-                                       methodName); // method name
+    msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME,
+                                       CAN_SERVER_OBJECT_PATH,
+                                       CAN_SERVER_INTERFACE,
+                                       methodName);
     if (NULL == msg) {
         fprintf(stderr, "Message Null\n");
         return;
     }
     
-    // append arguments
+    /* append arguments */
     dbus_message_iter_init_append(msg, &args);
     if (!dbus_message_iter_append_basic(&args, type, value)) {
         fprintf(stderr, "Out Of Memory!\n");
-        // free message
+        /* free message */
         dbus_message_unref(msg);
         return;
     }
     
-    // send message (don't care about reply)
+    /* send message (don't care about reply) */
     if (!dbus_connection_send (m_conn, msg, NULL)) {
         fprintf(stderr, "Out Of Memory!\n");
-        // free message
+        /* free message */
         dbus_message_unref(msg);
         return;
     }
     dbus_connection_flush(m_conn);
     
-    // free message
+    /* free message */
     dbus_message_unref(msg);
 }
 
