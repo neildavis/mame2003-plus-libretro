@@ -78,6 +78,7 @@ void main_event_loop() {
         }
 
         // Deinitialze output handler
+        fprintf(stdout, "%s: Deinit output handler\n", proc_name);
         pOutputHandler->deinit();
 
         /* Close the pipe ready to re-open for next client */

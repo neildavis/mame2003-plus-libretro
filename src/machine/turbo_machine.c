@@ -536,7 +536,10 @@ WRITE_HANDLER( turbo_ram_w ) {
 			break;
 		case 0xf212:
 			/* 0xf212 contains the time remaining */
-			output_set_value(OUTPUT_TURBO_TIME_NAME, data);
+			if (!turbo_start_screen_active()) {
+				/* Don't send during star t screen since it interferes with TURBO_LED_START */
+				output_set_value(OUTPUT_TURBO_TIME_NAME, data);
+			}
 			break;
 		case 0xf214:
 			/* 0xf214 contains the number of lives (after initial period) */
