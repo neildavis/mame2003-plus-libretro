@@ -462,17 +462,17 @@ MACHINE_INIT( buckrog )
  * 
  * *****************************************/
 
-INLINE bool turbo_yellow_flags_active() {
+INLINE bool turbo_yellow_flags_active(void) {
 	/* when flags at 0xf244 have bit 8 set, the ambulance yellow flags are active */
 	return (cpu_bankbase[STATIC_RAM][0xf244] & (1 << 7)) != 0;
 }
 
-INLINE bool start_lights_active() {
+INLINE bool start_lights_active(void) {
 	/* when flags at 0xf10 have bit 8 set, the start lights are active */
 	return (cpu_bankbase[STATIC_RAM][0xf210] & (1 << 7)) != 0;
 }
 
-INLINE bool turbo_start_screen_active() {
+INLINE bool turbo_start_screen_active(void) {
 	/* 0xf227 == 0x66 when the 'press start button' screen is active */
 	return (cpu_bankbase[STATIC_RAM][0xf227]) == 0x66;
 }
@@ -483,7 +483,10 @@ INLINE void turbo_status_indicator_write(data8_t data) {
 	/* The meaning of the value stored at 0xf258 depends on game state flags */
 	if (turbo_yellow_flags_active()) {
 		last_yellow_flag = data;
-		output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, data);
+		/* to avoid latency in the outputs server, we only send the beginning and end events */
+		if (data < 2) {
+			output_set_value(OUTPUT_TURBO_RACE_YELLOW_FLAG_NAME, data);
+		}
 	} 
 	else if (start_lights_active()) {
 		/* otherwise, 0xf258 contains the start lights sequence state: 0-5 (1..4 -> R.RR.RRR.RRRG) */
