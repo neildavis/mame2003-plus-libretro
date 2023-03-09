@@ -125,6 +125,10 @@ void TurboOutputHandler::update_yellow_flag(int value) {
 }
 
 void TurboOutputHandler::update_start_button(int value) {
+    if (m_pSayer->finished()) {
+        m_pSayer->begin("PRESS START bUTTON  ");
+    }
+    m_pSayer->next();
     m_start_lights_last = -1;
     digitalWrite(kPinStartBtn, (1 - (value %2)));
 }
