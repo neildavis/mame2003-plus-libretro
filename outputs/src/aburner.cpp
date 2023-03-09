@@ -35,7 +35,7 @@ AfterBurnerOutputHandler::~AfterBurnerOutputHandler() {
 
 void AfterBurnerOutputHandler::init() {
     m_display.reset(new DisplayST7789R());
-    DisplayConfigruation displayConfig;
+    DisplayConfiguration displayConfig;
     displayConfig.width = kDisplayWidth;
     displayConfig.height = kDisplayHeight;
     displayConfig.spiSpeed = kSpiSpeed;

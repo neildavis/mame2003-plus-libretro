@@ -3,12 +3,11 @@
 
 #include <memory>
 #include <tm1637.h>
-#include <gpiod.hpp>
+#include <tm1637_sayer.h>
 
 #include "output_handler_base.h"
 
 using namespace tm1637;
-using namespace gpiod;
 
 class TurboOutputHandler : public MOutputHandler {
 public:
@@ -27,14 +26,8 @@ private:
     void update_start_mode(int value);
     void reset_state();
 private:
-    chip m_chip;
-    line m_line_r3;
-    line m_line_r2;
-    line m_line_r1;
-    line m_line_g;
-    line m_line_y1;
-    line m_line_y2;
-    std::unique_ptr<Device> m_pTM1637;
+    std::shared_ptr<Device> m_pTM1637;
+    std::unique_ptr<Sayer> m_pSayer;
     int m_tm1637_digits[4];
     int m_start_lights_last;
     bool m_attract_mode_active;
