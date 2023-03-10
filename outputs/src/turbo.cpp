@@ -23,18 +23,26 @@ const Point imgP1(minX, minY);
 const Point imgP2(maxX, maxY);
 const int imgW = maxX - minX + 1, imgH = maxY - minY + 1;
 const int imgCtrX = (imgW / 2), imgCtrY = (imgH / 2);
-const int radius = imgW / 2;
 const int lampRadius = 50;
 // const Point lampP1(minX + (imgW - lampImage.getWidth()) / 2 + 1, minY + (imgH - lampImage.getHeight()) / 2 + 1);
 // const Point lampP2(lampP1.x + lampImage.getWidth() - 1, lampP1.y + lampImage.getHeight() - 1);
-const int arcThickness = 20;
-const float degreeStart = 150.0;
-const float degreeWarn = -80;
-const float degreeDanger = -130;
-const float degreeEnd = -180.0;
-const float degreeRange = degreeStart - degreeEnd;
-const float degreeInc = 10.0;
-const bool gradient = false;
+const int timeArcRadius = imgW / 2;
+const int timeArcThickness = 20;
+const float timeArcStartDeg = 150.0;
+const float timeArcWarnDeg = -80;
+const float timeArcDangerDeg = -130;
+const float timeArcEndDeg = -180.0;
+const float timeArcDegreeRange = timeArcStartDeg - timeArcEndDeg;
+const float timeArcDegreeInc = 10.0;
+const bool timeArcGradient = false;
+//
+const int kCarsPassedTarget = 30;
+const int kCarsPassedMax = 41;
+const int carsPassedPieRadius = timeArcRadius - timeArcThickness * 3;
+const float carsPassedStartDeg = 180.0;
+const float carsPassedEndDeg = -180.0;
+const float carsPassedDegreeRange = carsPassedStartDeg - carsPassedEndDeg;
+const float carsPassedDegreeInc = carsPassedDegreeRange / kCarsPassedMax;
 
 TurboOutputHandler::TurboOutputHandler() :
     m_image(imgW, imgH, bgColor) {
@@ -119,25 +127,25 @@ void TurboOutputHandler::update_time(int value) {
         m_time_max = value;
         // Draw initial full arc
         Color arcSegmentColor = GREEN;
-        for (float degree = degreeStart; degree > degreeEnd; degree -= degreeInc) {
-            if (gradient) {
+        for (float degree = timeArcStartDeg; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
+            if (timeArcGradient) {
                 int color_green = (degree + 176) * 255 / 320;
                 int color_red = 255 - color_green;
                 arcSegmentColor = Color(color_red, color_green, 0);
             } else { 
-                if (degree < degreeDanger) {
+                if (degree < timeArcDangerDeg) {
                     arcSegmentColor = RED;
-                } else if (degree < degreeWarn) {
+                } else if (degree < timeArcWarnDeg) {
                     arcSegmentColor = AMBER;
                 }
             }
-            m_image.drawArc(imgCtrX, imgCtrY, radius, radius -arcThickness, degree - degreeInc, degree, arcSegmentColor, 3);
+            m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius, timeArcRadius -timeArcThickness, degree - timeArcDegreeInc, degree, arcSegmentColor, 3);
         }
     } else if (value != m_time_last) {
         // Time decrement, blank out corresponding arc portion
-        float degreeTimeLast = degreeEnd + (degreeRange * m_time_last / m_time_max) + 1;
-        float degreeTimeThis = degreeEnd + (degreeRange * value / m_time_max);
-        m_image.drawArc(imgCtrX, imgCtrY, radius + 1, radius - arcThickness - 1, degreeTimeThis, degreeTimeLast, bgColor, 3);
+        float degreeTimeLast = timeArcEndDeg + (timeArcDegreeRange * m_time_last / m_time_max) + 1;
+        float degreeTimeThis = timeArcEndDeg + (timeArcDegreeRange * value / m_time_max);
+        m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius + 1, timeArcRadius - timeArcThickness - 1, degreeTimeThis, timeArcStartDeg + 1, bgColor, 3);
     }
     m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
     m_time_last = value;
@@ -154,6 +162,20 @@ void TurboOutputHandler::update_cars_passed(int value) {
     // }
     // m_tm1637_digits[3] = value % 10;
     // m_pTM1637->showInteger(3, m_tm1637_digits[3]);
+    
+    // Draw CP on ST7789
+    Color cpColor(RED);
+    if (value >= kCarsPassedTarget) {
+       cpColor = GREEN;
+    }
+    float cpDegree = carsPassedStartDeg - value * carsPassedDegreeInc;
+    m_image.drawPieSlice(imgCtrX, imgCtrY, carsPassedPieRadius, carsPassedStartDeg, cpDegree, cpColor, SOLID, 2); 
+    // fill any remiaing space with BG color
+    if (value < kCarsPassedMax) {
+        m_image.drawPieSlice(imgCtrX, imgCtrY, carsPassedPieRadius, cpDegree, carsPassedEndDeg, bgColor, SOLID, 2); 
+    }
+    m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
+    m_cars_passed = value;
 }
 
 void TurboOutputHandler::update_start_lights(int value) {

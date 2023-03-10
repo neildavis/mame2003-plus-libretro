@@ -36,6 +36,7 @@ private:
     int m_start_lights_last;
     int m_time_last;
     int m_time_max;
+    int m_cars_passed;
     bool m_attract_mode_active;
     bool m_start_mode_active;
 };
