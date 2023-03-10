@@ -4,6 +4,7 @@
 #include <memory>
 #include <tm1637.h>
 #include <tm1637_sayer.h>
+#include <udd.h>
 
 #include "output_handler_base.h"
 
@@ -11,6 +12,7 @@ using namespace tm1637;
 
 class TurboOutputHandler : public MOutputHandler {
 public:
+    TurboOutputHandler();
     // MOutputHandler overrides
     virtual ~TurboOutputHandler() override;
     virtual void init() override;
@@ -28,8 +30,12 @@ private:
 private:
     std::shared_ptr<Device> m_pTM1637;
     std::unique_ptr<Sayer> m_pSayer;
-    int m_tm1637_digits[4];
+    udd::DisplayST7789R m_display;
+    udd::Image m_image;
+//    int m_tm1637_digits[4];
     int m_start_lights_last;
+    int m_time_last;
+    int m_time_max;
     bool m_attract_mode_active;
     bool m_start_mode_active;
 };

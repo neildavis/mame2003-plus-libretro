@@ -10,24 +10,71 @@
 #include "utils.h"
 
 using namespace tm1637;
+using namespace udd;
 
 const int kPinStartBtn = 17;
+const int kSpiSpeed = 90000000;
 
+// Consts for srawing on ST7789
+const Color &bgColor = BLACK;
+const Color AMBER(255, 192, 0);
+const int minX = 21, maxX= 226, minY = 0, maxY = 205;
+const Point imgP1(minX, minY);
+const Point imgP2(maxX, maxY);
+const int imgW = maxX - minX + 1, imgH = maxY - minY + 1;
+const int imgCtrX = (imgW / 2), imgCtrY = (imgH / 2);
+const int radius = imgW / 2;
+const int lampRadius = 50;
+// const Point lampP1(minX + (imgW - lampImage.getWidth()) / 2 + 1, minY + (imgH - lampImage.getHeight()) / 2 + 1);
+// const Point lampP2(lampP1.x + lampImage.getWidth() - 1, lampP1.y + lampImage.getHeight() - 1);
+const int arcThickness = 20;
+const float degreeStart = 150.0;
+const float degreeWarn = -80;
+const float degreeDanger = -130;
+const float degreeEnd = -180.0;
+const float degreeRange = degreeStart - degreeEnd;
+const float degreeInc = 10.0;
+const bool gradient = false;
+
+TurboOutputHandler::TurboOutputHandler() :
+    m_image(imgW, imgH, bgColor) {
+
+}
+ 
 TurboOutputHandler::~TurboOutputHandler() {
 }
 
 void TurboOutputHandler::init() {
 
-    m_pTM1637 = std::make_shared<Device>(3, 2, GpioGPIOD);
-    m_pSayer.reset(new Sayer(m_pTM1637));
+    // Setup start button
     wiringPiSetupGpio();
     pinMode(kPinStartBtn, OUTPUT);
+    // Setup TM1637
+    m_pTM1637 = std::make_shared<Device>(3, 2, GpioGPIOD);
+    m_pSayer.reset(new Sayer(m_pTM1637));
+    // Setup ST7789
+    DisplayConfiguration displayConfig;
+    displayConfig.width = 240;
+    displayConfig.height = 240;
+    displayConfig.spiSpeed = kSpiSpeed;
+    displayConfig.spiMode = 3;
+    displayConfig.CS = 4;
+    displayConfig.DC = 6;
+    displayConfig.RST = 5;
+    displayConfig.BLK = 13;
+    m_display.openDisplay(displayConfig);
+    // Setup initial state
     reset_state();
  }
 
 void TurboOutputHandler::deinit() {
     m_pTM1637->clear();
     m_pTM1637.reset();
+    m_pSayer.reset();
+    m_display.clearScreen(bgColor);
+    m_image.clear(bgColor);
+    m_display.reset();
+    m_display.closeSPI();
 }
 
 void TurboOutputHandler::handle_output(const char *name, int value) {
@@ -67,26 +114,46 @@ void TurboOutputHandler::update_time(int value) {
         return; // Ignore time during attract and start screen modes
     }
 
-    // int valTens = value / 10;
-    // if (m_tm1637_digits[0] != valTens) {
-    //     m_tm1637_digits[0] = valTens;
-    //     m_pTM1637->showInteger(0, valTens);
-    // }
-    // m_tm1637_digits[1] = value % 10;
-    // m_pTM1637->showInteger(1, m_tm1637_digits[1]);
+    // Time on ST7789
+    if (value > m_time_last) {
+        m_time_max = value;
+        // Draw initial full arc
+        Color arcSegmentColor = GREEN;
+        for (float degree = degreeStart; degree > degreeEnd; degree -= degreeInc) {
+            if (gradient) {
+                int color_green = (degree + 176) * 255 / 320;
+                int color_red = 255 - color_green;
+                arcSegmentColor = Color(color_red, color_green, 0);
+            } else { 
+                if (degree < degreeDanger) {
+                    arcSegmentColor = RED;
+                } else if (degree < degreeWarn) {
+                    arcSegmentColor = AMBER;
+                }
+            }
+            m_image.drawArc(imgCtrX, imgCtrY, radius, radius -arcThickness, degree - degreeInc, degree, arcSegmentColor, 3);
+        }
+    } else if (value != m_time_last) {
+        // Time decrement, blank out corresponding arc portion
+        float degreeTimeLast = degreeEnd + (degreeRange * m_time_last / m_time_max) + 1;
+        float degreeTimeThis = degreeEnd + (degreeRange * value / m_time_max);
+        m_image.drawArc(imgCtrX, imgCtrY, radius + 1, radius - arcThickness - 1, degreeTimeThis, degreeTimeLast, bgColor, 3);
+    }
+    m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
+    m_time_last = value;
 }
 
 void TurboOutputHandler::update_cars_passed(int value) {
     if (m_attract_mode_active || m_start_lights_last < 0) {
         return; // Ignore cars passed during attract mode
     }
-    int valTens = value / 10;
-    if (m_tm1637_digits[2] != valTens) {
-        m_tm1637_digits[2] = valTens;
-        m_pTM1637->showInteger(2, valTens);
-    }
-    m_tm1637_digits[3] = value % 10;
-    m_pTM1637->showInteger(3, m_tm1637_digits[3]);
+    // int valTens = value / 10;
+    // if (m_tm1637_digits[2] != valTens) {
+    //     m_tm1637_digits[2] = valTens;
+    //     m_pTM1637->showInteger(2, valTens);
+    // }
+    // m_tm1637_digits[3] = value % 10;
+    // m_pTM1637->showInteger(3, m_tm1637_digits[3]);
 }
 
 void TurboOutputHandler::update_start_lights(int value) {
@@ -150,10 +217,11 @@ void TurboOutputHandler::update_start_mode(int value) {
 
 void TurboOutputHandler::reset_state() {
     m_start_lights_last = -1;
-    for (int i=0; i<4; i++) {
-        m_tm1637_digits[i] = -1;    
-    }
+    // for (int i=0; i<4; i++) {
+    //     m_tm1637_digits[i] = -1;    
+    // }
     m_pTM1637->clear();
     m_pTM1637->setColon(false);
     digitalWrite(kPinStartBtn, LOW);
+    m_display.clearScreen(bgColor);
 }
