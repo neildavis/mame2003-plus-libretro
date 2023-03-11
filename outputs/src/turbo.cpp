@@ -117,6 +117,24 @@ void TurboOutputHandler::handle_output(const char *name, int value) {
     }
 }
 
+void TurboOutputHandler::draw_complete_time_arc() {
+    Color arcSegmentColor = GREEN;
+    for (float degree = timeArcStartDeg; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
+        if (timeArcGradient) {
+            int color_green = (degree + 176) * 255 / 320;
+            int color_red = 255 - color_green;
+            arcSegmentColor = Color(color_red, color_green, 0);
+        } else { 
+            if (degree < timeArcDangerDeg) {
+                arcSegmentColor = RED;
+            } else if (degree < timeArcWarnDeg) {
+                arcSegmentColor = AMBER;
+            }
+        }
+        m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius, timeArcRadius -timeArcThickness, degree - timeArcDegreeInc, degree, arcSegmentColor, 3);
+    }
+}
+
 void TurboOutputHandler::update_time(int value) {
     if (m_attract_mode_active || m_start_mode_active) {
         return; // Ignore time during attract and start screen modes
@@ -126,24 +144,10 @@ void TurboOutputHandler::update_time(int value) {
     if (value > m_time_last) {
         m_time_max = value;
         // Draw initial full arc
-        Color arcSegmentColor = GREEN;
-        for (float degree = timeArcStartDeg; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
-            if (timeArcGradient) {
-                int color_green = (degree + 176) * 255 / 320;
-                int color_red = 255 - color_green;
-                arcSegmentColor = Color(color_red, color_green, 0);
-            } else { 
-                if (degree < timeArcDangerDeg) {
-                    arcSegmentColor = RED;
-                } else if (degree < timeArcWarnDeg) {
-                    arcSegmentColor = AMBER;
-                }
-            }
-            m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius, timeArcRadius -timeArcThickness, degree - timeArcDegreeInc, degree, arcSegmentColor, 3);
-        }
+        draw_complete_time_arc();
     } else if (value != m_time_last) {
         // Time decrement, blank out corresponding arc portion
-        float degreeTimeLast = timeArcEndDeg + (timeArcDegreeRange * m_time_last / m_time_max) + 1;
+        //float degreeTimeLast = timeArcEndDeg + (timeArcDegreeRange * m_time_last / m_time_max) + 1;
         float degreeTimeThis = timeArcEndDeg + (timeArcDegreeRange * value / m_time_max);
         m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius + 1, timeArcRadius - timeArcThickness - 1, degreeTimeThis, timeArcStartDeg + 1, bgColor, 3);
     }
@@ -165,8 +169,10 @@ void TurboOutputHandler::update_cars_passed(int value) {
     
     // Draw CP on ST7789
     Color cpColor(RED);
-    if (value >= kCarsPassedTarget) {
-       cpColor = GREEN;
+    if (m_last_yellow_flag > 0) {
+        cpColor = YELLOW;
+    } else if (value >= kCarsPassedTarget) {
+        cpColor = GREEN;
     }
     float cpDegree = carsPassedStartDeg - value * carsPassedDegreeInc;
     m_image.drawPieSlice(imgCtrX, imgCtrY, carsPassedPieRadius, carsPassedStartDeg, cpDegree, cpColor, SOLID, 2); 
@@ -201,16 +207,16 @@ void TurboOutputHandler::update_start_lights(int value) {
 }
 
 void TurboOutputHandler::update_yellow_flag(int value) {
-    // if (0 == value) {
-    //     m_line_y1.set_value(0);
-    //     m_line_y2.set_value(0);
-    // } else {
-    //     // struct timeb time_now;
-    //     // ftime(&time_now);
-    //     int odd = value % 2;
-    //     m_line_y1.set_value(odd);
-    //     m_line_y2.set_value(!odd);
-    // }
+    bool redrawCP = false;
+    if ((1 == value &&  0 == m_last_yellow_flag) || 
+        (0 == value && m_last_yellow_flag != 0)) {
+        // Start of yellow flags - redraw cp on yellow bg
+        redrawCP = true;
+    }
+    m_last_yellow_flag = value;
+    if (redrawCP) {
+        update_cars_passed(m_cars_passed);
+    }
 }
 
 void TurboOutputHandler::update_start_button(int value) {

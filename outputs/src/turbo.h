@@ -27,6 +27,7 @@ private:
     void update_attract_mode(int value);
     void update_start_mode(int value);
     void reset_state();
+    void draw_complete_time_arc();
 private:
     std::shared_ptr<Device> m_pTM1637;
     std::unique_ptr<Sayer> m_pSayer;
@@ -37,6 +38,7 @@ private:
     int m_time_last;
     int m_time_max;
     int m_cars_passed;
+    int m_last_yellow_flag;
     bool m_attract_mode_active;
     bool m_start_mode_active;
 };
