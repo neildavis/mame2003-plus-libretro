@@ -102,6 +102,14 @@ void TurboOutputHandler::handle_output(const char *name, int value) {
         update_yellow_flag(value);
         return;
     }
+    if (0 == strcmp(name, OUTPUT_TURBO_LIVES_NAME)) {
+        update_lives(value);
+        return;
+    }
+    if (0 == strcmp(name, OUTPUT_TURBO_STAGE_NAME)) {
+        update_stage(value);
+        return;
+    }
     if (0 == strcmp(name, OUTPUT_TURBO_ATTRACT_MODE_NAME)) {
         update_attract_mode(value);
         return;
@@ -159,13 +167,6 @@ void TurboOutputHandler::update_cars_passed(int value) {
     if (m_attract_mode_active || m_start_lights_last < 0) {
         return; // Ignore cars passed during attract mode
     }
-    // int valTens = value / 10;
-    // if (m_tm1637_digits[2] != valTens) {
-    //     m_tm1637_digits[2] = valTens;
-    //     m_pTM1637->showInteger(2, valTens);
-    // }
-    // m_tm1637_digits[3] = value % 10;
-    // m_pTM1637->showInteger(3, m_tm1637_digits[3]);
     
     // Draw CP on ST7789
     Color cpColor(RED);
@@ -187,11 +188,12 @@ void TurboOutputHandler::update_cars_passed(int value) {
 void TurboOutputHandler::update_start_lights(int value) {
     if (value >= m_start_lights_last) {
         if (3 == value) {
-            m_pSayer->begin("-GO-");
+            m_pSayer->begin("GO");
             for (int i = 0; i < 6; i++) {
                 m_pSayer->next();
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
+            update_tm1637();
             return;
         }        
         if (0 == value) {
@@ -199,9 +201,6 @@ void TurboOutputHandler::update_start_lights(int value) {
         }
         m_pSayer->next();
         m_pSayer->next();
-    } else {
-        m_pSayer->clear();
-        m_pTM1637->setColon(true);
     }
     m_start_lights_last = value;
 }
@@ -242,14 +241,61 @@ void TurboOutputHandler::update_start_mode(int value) {
         digitalWrite(kPinStartBtn, LOW);
     }
 }
+void TurboOutputHandler::update_lives(int value) {
+    if (0 == m_time_last) {
+        return;
+    }
+    m_lives = value;
+    update_tm1637();
+}
+
+void TurboOutputHandler::update_stage(int value) {
+    if (0 == m_time_last) {
+        return;
+    }
+    m_stage = value;
+    update_tm1637();
+}
+
+void TurboOutputHandler::update_tm1637() {
+    // Round
+    static const int8_t NUM_DIGITS[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, 
+                                    DIGIT_9, DIGIT_A, DIGIT_b, DIGIT_C, DIGIT_d, DIGIT_E, DIGIT_F};
+    m_tm1637_digits[0] = DIGIT_r;
+    m_tm1637_digits[1] = DIGIT_QUESTION_MARK;
+    if ((unsigned int)m_stage < sizeof(NUM_DIGITS) / sizeof(int8_t)) {
+        m_tm1637_digits[1] = NUM_DIGITS[m_stage + 1];
+    }
+    if (m_stage > 0) {
+        // stage is zero indexed. Lives only apply after first round/stage
+        m_tm1637_digits[2] = DIGIT_L;
+        m_tm1637_digits[3] = DIGIT_QUESTION_MARK;
+        if ((unsigned int)m_lives < sizeof(NUM_DIGITS) / sizeof(int8_t)) {
+            m_tm1637_digits[3] = NUM_DIGITS[m_lives];
+        }    
+    } else {
+        m_tm1637_digits[2] = 0;
+        m_tm1637_digits[3] = 0;
+    }
+    m_pTM1637->showRawDigits(m_tm1637_digits);
+    m_pTM1637->setColon(true);
+}
 
 void TurboOutputHandler::reset_state() {
     m_start_lights_last = -1;
-    // for (int i=0; i<4; i++) {
-    //     m_tm1637_digits[i] = -1;    
-    // }
-    m_pTM1637->clear();
+    m_time_last = 0;
+    m_time_max = 0;
+    m_cars_passed = 0;
+    m_last_yellow_flag = 0;
+    m_lives = 0;
+    m_stage = 0;
+    m_attract_mode_active = false;
+    m_start_mode_active = false;
+    for (int i=0; i<4; i++) {
+        m_tm1637_digits[i] = -1;    
+    }
     m_pTM1637->setColon(false);
+    m_pTM1637->clear();
     digitalWrite(kPinStartBtn, LOW);
     m_display.clearScreen(bgColor);
 }

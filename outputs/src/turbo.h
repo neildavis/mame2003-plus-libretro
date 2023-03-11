@@ -26,6 +26,9 @@ private:
     void update_start_button(int value);
     void update_attract_mode(int value);
     void update_start_mode(int value);
+    void update_lives(int value);
+    void update_stage(int value);
+    void update_tm1637();
     void reset_state();
     void draw_complete_time_arc();
 private:
@@ -33,12 +36,14 @@ private:
     std::unique_ptr<Sayer> m_pSayer;
     udd::DisplayST7789R m_display;
     udd::Image m_image;
-//    int m_tm1637_digits[4];
+    uint8_t m_tm1637_digits[4];
     int m_start_lights_last;
     int m_time_last;
     int m_time_max;
     int m_cars_passed;
     int m_last_yellow_flag;
+    int m_lives;
+    int m_stage;
     bool m_attract_mode_active;
     bool m_start_mode_active;
 };
