@@ -45,7 +45,8 @@ const float carsPassedDegreeRange = carsPassedStartDeg - carsPassedEndDeg;
 const float carsPassedDegreeInc = carsPassedDegreeRange / kCarsPassedMax;
 
 TurboOutputHandler::TurboOutputHandler() :
-    m_image(imgW, imgH, bgColor) {
+    m_image(imgW, imgH, bgColor),
+    m_logoImage(imgW, imgH, bgColor) {
 
 }
  
@@ -71,6 +72,12 @@ void TurboOutputHandler::init() {
     displayConfig.RST = 5;
     displayConfig.BLK = 13;
     m_display.openDisplay(displayConfig);
+    // Load BMP imnages
+    char res_path[4096];
+    get_resource_path(res_path, sizeof(res_path)/sizeof(char));
+    char logoImagePath[4096];
+    snprintf(logoImagePath, 4096, "%s/nn_206.bmp", res_path);
+    m_logoImage.loadBMP(logoImagePath, 0, 0);
     // Setup initial state
     reset_state();
  }
@@ -228,18 +235,18 @@ void TurboOutputHandler::update_start_button(int value) {
 }
 
 void TurboOutputHandler::update_attract_mode(int value) {
-    m_attract_mode_active = (value > 0);
     reset_state();
+    m_attract_mode_active = (value > 0);
 }
 
 void TurboOutputHandler::update_start_mode(int value) {
-    m_start_mode_active = (value > 0);
-    if (m_start_mode_active) {
+    if (value) {
         reset_state();
-        // m_line_g.set_value(1);
+        m_display.showImage(m_logoImage, imgP1, imgP2, DEGREE_0);
     } else {
         digitalWrite(kPinStartBtn, LOW);
     }
+    m_start_mode_active = (value > 0);
 }
 void TurboOutputHandler::update_lives(int value) {
     if (0 == m_time_last) {

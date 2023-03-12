@@ -36,6 +36,7 @@ private:
     std::unique_ptr<Sayer> m_pSayer;
     udd::DisplayST7789R m_display;
     udd::Image m_image;
+    udd::Image m_logoImage;
     uint8_t m_tm1637_digits[4];
     int m_start_lights_last;
     int m_time_last;
