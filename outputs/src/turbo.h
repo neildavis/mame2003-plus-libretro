@@ -30,7 +30,8 @@ private:
     void update_stage(int value);
     void update_tm1637();
     void reset_state();
-    void draw_complete_time_arc();
+    void draw_time_arc();
+    void draw_cars_passed_pie_slice();
 private:
     std::shared_ptr<Device> m_pTM1637;
     std::unique_ptr<Sayer> m_pSayer;
@@ -39,7 +40,7 @@ private:
     udd::Image m_logoImage;
     uint8_t m_tm1637_digits[4];
     int m_start_lights_last;
-    int m_time_last;
+    int m_time;
     int m_time_max;
     int m_cars_passed;
     int m_last_yellow_flag;

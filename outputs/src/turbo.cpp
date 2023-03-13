@@ -34,7 +34,7 @@ const float timeArcWarnDeg = -80;
 const float timeArcDangerDeg = -130;
 const float timeArcEndDeg = -180.0;
 const float timeArcDegreeRange = timeArcStartDeg - timeArcEndDeg;
-const float timeArcDegreeInc = 10.0;
+const float timeArcDegreeInc = timeArcDegreeRange / 100;
 const bool timeArcGradient = false;
 //
 const int kCarsPassedTarget = 30;
@@ -48,7 +48,6 @@ const float carsPassedDegreeInc = carsPassedDegreeRange / kCarsPassedMax;
 TurboOutputHandler::TurboOutputHandler() :
     m_image(imgW, imgH, bgColor),
     m_logoImage(imgW, imgH, bgColor) {
-
 }
  
 TurboOutputHandler::~TurboOutputHandler() {
@@ -87,8 +86,7 @@ void TurboOutputHandler::deinit() {
     m_pTM1637->clear();
     m_pTM1637.reset();
     m_pSayer.reset();
-    m_display.clearScreen(bgColor);
-    m_image.clear(bgColor);
+    m_display.clearScreen(BLACK);
     m_display.reset();
     m_display.closeSPI();
 }
@@ -133,9 +131,11 @@ void TurboOutputHandler::handle_output(const char *name, int value) {
     }
 }
 
-void TurboOutputHandler::draw_complete_time_arc() {
+void TurboOutputHandler::draw_time_arc() {
     Color arcSegmentColor = GREEN;
-    for (float degree = timeArcStartDeg; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
+    float degreeTimeThis = timeArcEndDeg + (timeArcDegreeRange * m_time / m_time_max);
+    m_image = m_logoImage;
+    for (float degree = degreeTimeThis; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
         if (timeArcGradient) {
             int color_green = (degree + 176) * 255 / 320;
             int color_red = 255 - color_green;
@@ -157,18 +157,32 @@ void TurboOutputHandler::update_time(int value) {
     }
 
     // Time on ST7789
-    if (value > m_time_last) {
+    if (value > m_time) {
         m_time_max = value;
-        // Draw initial full arc
-        draw_complete_time_arc();
-    } else if (value != m_time_last) {
-        // Time decrement, blank out corresponding arc portion
-        //float degreeTimeLast = timeArcEndDeg + (timeArcDegreeRange * m_time_last / m_time_max) + 1;
-        float degreeTimeThis = timeArcEndDeg + (timeArcDegreeRange * value / m_time_max);
-        m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius + 1, timeArcRadius - timeArcThickness - 1, degreeTimeThis, timeArcStartDeg + 1, bgColor, 3);
     }
+    m_time = value;
+    draw_time_arc();
+    draw_cars_passed_pie_slice();
     m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
-    m_time_last = value;
+}
+
+void TurboOutputHandler::draw_cars_passed_pie_slice() {
+    if (0 == m_cars_passed) {
+        return;
+    }
+    // Draw CP on m_image
+    Image cpPieImg(carsPassedPieRadius * 2 + 3, carsPassedPieRadius * 2 + 3, bgColor);
+    Color cpColor(RED);
+    if (m_last_yellow_flag > 0) {
+        cpColor = YELLOW;
+    } else if (m_cars_passed >= kCarsPassedTarget) {
+        cpColor = GREEN;
+    }
+    float cpDegree = carsPassedStartDeg - m_cars_passed * carsPassedDegreeInc;
+    cpPieImg.drawPieSlice(carsPassedPieRadius + 1, carsPassedPieRadius + 1, carsPassedPieRadius, carsPassedStartDeg, cpDegree, cpColor, SOLID, 2); 
+    int x = (m_image.getWidth() - cpPieImg.getWidth()) / 2;
+    int y = (m_image.getHeight() - cpPieImg.getHeight()) / 2;
+    m_image.drawImage(x, y, cpPieImg, true);
 }
 
 void TurboOutputHandler::update_cars_passed(int value) {
@@ -176,21 +190,10 @@ void TurboOutputHandler::update_cars_passed(int value) {
         return; // Ignore cars passed during attract mode
     }
     
-    // Draw CP on ST7789
-    Color cpColor(RED);
-    if (m_last_yellow_flag > 0) {
-        cpColor = YELLOW;
-    } else if (value >= kCarsPassedTarget) {
-        cpColor = GREEN;
-    }
-    float cpDegree = carsPassedStartDeg - value * carsPassedDegreeInc;
-    m_image.drawPieSlice(imgCtrX, imgCtrY, carsPassedPieRadius, carsPassedStartDeg, cpDegree, cpColor, SOLID, 2); 
-    // fill any remiaing space with BG color
-    if (value < kCarsPassedMax) {
-        m_image.drawPieSlice(imgCtrX, imgCtrY, carsPassedPieRadius, cpDegree, carsPassedEndDeg, bgColor, SOLID, 2); 
-    }
-    m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
     m_cars_passed = value;
+    draw_time_arc();
+    draw_cars_passed_pie_slice();
+    m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
 }
 
 void TurboOutputHandler::update_start_lights(int value) {
@@ -250,7 +253,7 @@ void TurboOutputHandler::update_start_mode(int value) {
     m_start_mode_active = (value > 0);
 }
 void TurboOutputHandler::update_lives(int value) {
-    if (0 == m_time_last) {
+    if (0 == m_time) {
         return;
     }
     m_lives = value;
@@ -258,7 +261,7 @@ void TurboOutputHandler::update_lives(int value) {
 }
 
 void TurboOutputHandler::update_stage(int value) {
-    if (0 == m_time_last) {
+    if (0 == m_time) {
         return;
     }
     m_stage = value;
@@ -291,7 +294,7 @@ void TurboOutputHandler::update_tm1637() {
 
 void TurboOutputHandler::reset_state() {
     m_start_lights_last = -1;
-    m_time_last = 0;
+    m_time = 0;
     m_time_max = 0;
     m_cars_passed = 0;
     m_last_yellow_flag = 0;
@@ -305,5 +308,5 @@ void TurboOutputHandler::reset_state() {
     m_pTM1637->setColon(false);
     m_pTM1637->clear();
     digitalWrite(kPinStartBtn, LOW);
-    m_display.clearScreen(bgColor);
+    m_display.showImage(m_logoImage, imgP1, imgP2, DEGREE_0);
 }
