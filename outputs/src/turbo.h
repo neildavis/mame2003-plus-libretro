@@ -31,7 +31,7 @@ private:
     void update_tm1637();
     void reset_state();
     void draw_time_arc();
-    void draw_cars_passed_pie_slice();
+    void draw_cars_passed_arc();
 private:
     std::shared_ptr<Device> m_pTM1637;
     std::unique_ptr<Sayer> m_pSayer;

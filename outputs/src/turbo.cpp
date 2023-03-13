@@ -39,11 +39,12 @@ const bool timeArcGradient = false;
 //
 const int kCarsPassedTarget = 30;
 const int kCarsPassedMax = 41;
-const int carsPassedPieRadius = timeArcRadius - timeArcThickness * 3;
-const float carsPassedStartDeg = 180.0;
-const float carsPassedEndDeg = -180.0;
-const float carsPassedDegreeRange = carsPassedStartDeg - carsPassedEndDeg;
-const float carsPassedDegreeInc = carsPassedDegreeRange / kCarsPassedMax;
+const int carsPassedArcRadius = 50;
+const int carsPassedArcThickness = timeArcThickness;
+const float carsPassedArcStartDeg = 180.0;
+const float carsPassedArcEndDeg = -180.0;
+const float carsPassedArcDegreeRange = carsPassedArcStartDeg - carsPassedArcEndDeg;
+const float carsPassedArcDegreeInc = carsPassedArcDegreeRange / kCarsPassedMax;
 
 TurboOutputHandler::TurboOutputHandler() :
     m_image(imgW, imgH, bgColor),
@@ -162,27 +163,24 @@ void TurboOutputHandler::update_time(int value) {
     }
     m_time = value;
     draw_time_arc();
-    draw_cars_passed_pie_slice();
+    draw_cars_passed_arc();
     m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
 }
 
-void TurboOutputHandler::draw_cars_passed_pie_slice() {
+void TurboOutputHandler::draw_cars_passed_arc() {
     if (0 == m_cars_passed) {
         return;
     }
-    // Draw CP on m_image
-    Image cpPieImg(carsPassedPieRadius * 2 + 3, carsPassedPieRadius * 2 + 3, bgColor);
+    
     Color cpColor(RED);
     if (m_last_yellow_flag > 0) {
         cpColor = YELLOW;
     } else if (m_cars_passed >= kCarsPassedTarget) {
         cpColor = GREEN;
     }
-    float cpDegree = carsPassedStartDeg - m_cars_passed * carsPassedDegreeInc;
-    cpPieImg.drawPieSlice(carsPassedPieRadius + 1, carsPassedPieRadius + 1, carsPassedPieRadius, carsPassedStartDeg, cpDegree, cpColor, SOLID, 2); 
-    int x = (m_image.getWidth() - cpPieImg.getWidth()) / 2;
-    int y = (m_image.getHeight() - cpPieImg.getHeight()) / 2;
-    m_image.drawImage(x, y, cpPieImg, true);
+    float degreeCpThis = carsPassedArcStartDeg - (carsPassedArcDegreeRange * m_cars_passed / kCarsPassedMax);
+    // Draw CP on m_image        
+    m_image.drawArc(imgCtrX, imgCtrY, carsPassedArcRadius, carsPassedArcRadius - carsPassedArcThickness, degreeCpThis, carsPassedArcStartDeg, cpColor, 2);
 }
 
 void TurboOutputHandler::update_cars_passed(int value) {
@@ -192,7 +190,7 @@ void TurboOutputHandler::update_cars_passed(int value) {
     
     m_cars_passed = value;
     draw_time_arc();
-    draw_cars_passed_pie_slice();
+    draw_cars_passed_arc();
     m_display.showImage(m_image, imgP1, imgP2, DEGREE_0);
 }
 
