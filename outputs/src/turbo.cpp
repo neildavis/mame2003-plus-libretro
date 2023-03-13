@@ -16,8 +16,9 @@ const int kPinStartBtn = 17;
 const int kSpiSpeed = 90000000;
 
 // Consts for srawing on ST7789
-const Color &bgColor = BLACK;
+const Color NN_GREEN = Color(61, 131, 59);
 const Color AMBER(255, 192, 0);
+const Color &bgColor = NN_GREEN;
 const int minX = 21, maxX= 226, minY = 0, maxY = 205;
 const Point imgP1(minX, minY);
 const Point imgP2(maxX, maxY);
