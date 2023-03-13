@@ -15,7 +15,7 @@ using namespace udd;
 const int kPinStartBtn = 17;
 const int kSpiSpeed = 90000000;
 
-// Consts for srawing on ST7789
+// Consts for drawing on ST7789
 const Color NN_GREEN = Color(61, 131, 59);
 const Color AMBER(255, 192, 0);
 const Color &bgColor = NN_GREEN;
@@ -24,9 +24,7 @@ const Point imgP1(minX, minY);
 const Point imgP2(maxX, maxY);
 const int imgW = maxX - minX + 1, imgH = maxY - minY + 1;
 const int imgCtrX = (imgW / 2), imgCtrY = (imgH / 2);
-const int lampRadius = 50;
-// const Point lampP1(minX + (imgW - lampImage.getWidth()) / 2 + 1, minY + (imgH - lampImage.getHeight()) / 2 + 1);
-// const Point lampP2(lampP1.x + lampImage.getWidth() - 1, lampP1.y + lampImage.getHeight() - 1);
+// time arc consts
 const int timeArcRadius = imgW / 2;
 const int timeArcThickness = 20;
 const float timeArcStartDeg = 150.0;
@@ -35,8 +33,7 @@ const float timeArcDangerDeg = -130;
 const float timeArcEndDeg = -180.0;
 const float timeArcDegreeRange = timeArcStartDeg - timeArcEndDeg;
 const float timeArcDegreeInc = timeArcDegreeRange / 100;
-const bool timeArcGradient = false;
-//
+// cars passed arc consts
 const int kCarsPassedTarget = 30;
 const int kCarsPassedMax = 41;
 const int carsPassedArcRadius = 50;
@@ -136,17 +133,11 @@ void TurboOutputHandler::draw_time_arc() {
     Color arcSegmentColor = GREEN;
     float degreeTimeThis = timeArcEndDeg + (timeArcDegreeRange * m_time / m_time_max);
     m_image = m_logoImage;
-    for (float degree = degreeTimeThis; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {
-        if (timeArcGradient) {
-            int color_green = (degree + 176) * 255 / 320;
-            int color_red = 255 - color_green;
-            arcSegmentColor = Color(color_red, color_green, 0);
-        } else { 
-            if (degree < timeArcDangerDeg) {
-                arcSegmentColor = RED;
-            } else if (degree < timeArcWarnDeg) {
-                arcSegmentColor = AMBER;
-            }
+    for (float degree = degreeTimeThis; degree > timeArcEndDeg; degree -= timeArcDegreeInc) {    
+        if (degree < timeArcDangerDeg) {
+            arcSegmentColor = RED;
+        } else if (degree < timeArcWarnDeg) {
+            arcSegmentColor = AMBER;
         }
         m_image.drawArc(imgCtrX, imgCtrY, timeArcRadius, timeArcRadius -timeArcThickness, degree - timeArcDegreeInc, degree, arcSegmentColor, 3);
     }
