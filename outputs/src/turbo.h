@@ -32,8 +32,9 @@ private:
     void reset_state();
     void draw_time_arc();
     void draw_cars_passed_arc();
-private:
+protected:
     std::shared_ptr<Device> m_pTM1637;
+private:
     std::unique_ptr<Sayer> m_pSayer;
     udd::DisplayST7789R m_display;
     udd::Image m_image;

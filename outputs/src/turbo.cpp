@@ -70,7 +70,7 @@ void TurboOutputHandler::init() {
     displayConfig.RST = 5;
     displayConfig.BLK = 13;
     m_display.openDisplay(displayConfig);
-    // Load BMP imnages
+    // Load BMP images
     char res_path[4096];
     get_resource_path(res_path, sizeof(res_path)/sizeof(char));
     char logoImagePath[4096];
