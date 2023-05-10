@@ -16,6 +16,7 @@
 #include "output_handler_base.h"
 #include "aburner.h"
 #include "turbo.h"
+#include "monacogp.h"
 
 void main_event_loop() {
     int fd;
@@ -64,6 +65,9 @@ void main_event_loop() {
                     } else if (0 == strcmp(machine_name, "turbo")) {
                         fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
                         pOutputHandler.reset(new TurboOutputHandler());
+                    } else if (0 == strcmp(machine_name, "monacogp")) {
+                        fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new MonacoGpOutputHandler());
                     }
                     pOutputHandler->init();
                     continue;                
