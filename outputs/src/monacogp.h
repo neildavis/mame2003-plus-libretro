@@ -17,9 +17,10 @@ public:
     // MOutputHandler overrides
     virtual void handle_output(const char *name, int value) override;
 private:
-    void update_score(int score);
+    void update_score(int score, bool visible);
 private:
     int m_score;
+    bool m_score_visible;
 };
 
 #endif // ___MONACOGP_H__
