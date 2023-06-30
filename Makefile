@@ -33,6 +33,12 @@ filter_out2  = $(call filter_out1,$(call filter_out1,$1))
 unixpath     = $(subst \,/,$1)
 unixcygpath  = /$(subst :,,$(call unixpath,$1))
 
+REALDASH ?= 0 # set to 0 or 1 to enable RealDash output via DBUS
+ifeq ($(REALDASH), 1)
+	CFLAGS += -DREALDASH
+	LIBS += $(shell pkg-config --libs dbus-1)
+endif
+
 ifeq ($(platform),)
 	system_platform = unix
 	platform = unix
@@ -98,7 +104,6 @@ endif
 
 # Unix
 ifeq ($(platform), unix)
-	LIBS += $(shell pkg-config --libs dbus-1)
 	TARGET = $(TARGET_NAME)_libretro.so
 	fpic = -fPIC
 	CFLAGS += $(fpic)
