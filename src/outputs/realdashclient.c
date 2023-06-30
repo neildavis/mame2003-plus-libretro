@@ -38,6 +38,7 @@ uint8_t m_initialized;
 /** c'tor */
 void RealDashCanClientInit() {
     m_initialized = 0;
+#ifdef REALDASH
     DBusError err;
     int ret;
     /* initialise the errors */
@@ -64,12 +65,15 @@ void RealDashCanClientInit() {
         exit(1);
     }
     m_initialized = 1;
+#endif
 }
 
 /** d'tor */
 void RealDashCanClientDeinit() {
+#ifdef REALDASH
     dbus_connection_close(m_conn);
     m_conn = NULL;
+#endif
     m_initialized = 0;
 }
 
@@ -80,53 +84,67 @@ uint8_t RealDashCanClientIsInitialized() {
 
 /** Start CAN server */
 void RealDashCanClientStartServer() {
+#ifdef REALDASH
     dbusMethodCallSync("startServer");
+#endif
 }
 
 /** Stop CAN server */
 void RealDashCanClientStopServer() {
+#ifdef REALDASH
     dbusMethodCallSync("stopServer");
+#endif
 }
 
 /** Update Rev Counter RPM */
 void RealDashCanClientUpdateRevs(uint16_t revsRpm) {
+#ifdef REALDASH
     if (revsRpm != m_revsRpm) {
         m_revsRpm = revsRpm;
         dbusMethodCallIgnoreReturn("setRevs", DBUS_TYPE_UINT16, &m_revsRpm);
     }
+#endif
 }
 
 /** Update Speed MPH */
 void RealDashCanClientUpdateSpeed(uint16_t speedMph) {
+#ifdef REALDASH
     if (m_speedMph != speedMph) {
         m_speedMph = speedMph;
         dbusMethodCallIgnoreReturn("setSpeed", DBUS_TYPE_UINT16, &m_speedMph);
     }
+#endif
 }
 
 /** Update Fuel Level % */
 void RealDashCanClientUpdateFuel(uint16_t fuelPercent) {
+#ifdef REALDASH
     if (m_fuelPercent != fuelPercent) {
         m_fuelPercent = fuelPercent;
         dbusMethodCallIgnoreReturn("setFuelLevel", DBUS_TYPE_UINT16, &m_fuelPercent);
     }
+#endif
 }
 
 /** Update Gear */
 void RealDashCanClientUpdateGear(uint16_t gear) {
+#ifdef REALDASH
     if (m_gear != gear) {
         m_gear = gear;
         dbusMethodCallIgnoreReturn("setGear", DBUS_TYPE_UINT16, &m_gear);
     }
+#endif
 }
 
 /** Reset everything to default/zero states */
 void RealDashCanClientResetDefaults()
 {
+#ifdef REALDASH
     RealDashCanClientUpdateRevs(0);
     RealDashCanClientUpdateSpeed(0);
     RealDashCanClientUpdateFuel(0);
     RealDashCanClientUpdateGear(0);
+#endif
 }
 
 /*
