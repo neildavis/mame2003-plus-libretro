@@ -1312,13 +1312,11 @@ static READ16_HANDLER( taitoz_msb_sound_r )
  * Time (Fuel)
  */
 
-static UINT16 chasehq_time_data = 0;
 static UINT16 chasehq_time_last = 0; /* The last time we recorded */
 static UINT16 chasehq_time_max = 60; /* max time in seconds when you start the game */
 
 static WRITE16_HANDLER( chasehq_time_w )
 {
-	COMBINE_DATA(&chasehq_time_data);
 	/* 	Time is stored at 0x100200. 
 		A 16-bit machine word would be 0x100200-0x100201. 
 		M68000 is big endian, so 0x100200 is MSB
@@ -1343,56 +1341,37 @@ static WRITE16_HANDLER( chasehq_time_w )
 	}
 }
 
-static READ16_HANDLER( chasehq_time_r )
+/*
+ * Speed
+ */
+
+static WRITE16_HANDLER( chasehq_speed_w )
 {
-	return chasehq_time_data;
+	/* Speed is stored in single word packed BCD at 0x100400 */
+	UINT16 speedKPH = (100 * ((data & 0xf00) >> 8)) + (10 * ((data & 0xf0) >> 4)) + (data & 0xf);
+	UINT32 speedMPH = speedKPH * 6214 / 10000;
+	RealDashCanClientUpdateSpeed((UINT16)speedMPH);
 }
 
 /*
- * Speed & Revs (contiguous)
+ * Revs
  */
 
-static UINT16 chasehq_speed_data = 0;
-static UINT16 chasehq_revs_data = 0;
-
-static WRITE16_HANDLER( chasehq_speed_revs_w )
+static WRITE16_HANDLER( chasehq_revs_w )
 {
-	if (0 == offset) {
-		/* Speed is stored in single word packed BCD at 0x100400 */
-		COMBINE_DATA(&chasehq_speed_data);
-		UINT16 speedKPH = (100 * ((chasehq_speed_data & 0xf00) >> 8)) + (10 * ((chasehq_speed_data & 0xf0) >> 4)) + (chasehq_speed_data & 0xf);
-		UINT32 speedMPH = speedKPH * 6214 / 10000;
-		RealDashCanClientUpdateSpeed((UINT16)speedMPH);
-	} else {
-		/* Revs is stored in single word at 0x100402
-		   with an absurdly large range of 0x0000-0x5000 
-		   which we will map to 0-8000 decimal */
-		COMBINE_DATA(&chasehq_revs_data);
-		UINT32 revs = data * 8000 / 0x5000;
-		RealDashCanClientUpdateRevs(revs);
-	}
-}
-
-static READ16_HANDLER( chasehq_speed_revs_r )
-{
-	if (0 == offset) {
-		/* Speed is stored in single word packed BCD at 0x100400 */
-		return chasehq_speed_data;
-	} else {
-		/* Revs is stored in single word at 0x100402 */
-		return chasehq_revs_data;
-	}
+	/* Revs is stored in single word at 0x100402
+		with an absurdly large range of 0x0000-0x5000 
+		which we will map to 0-8000 decimal */
+	UINT32 revs = data * 8000 / 0x5000;
+	RealDashCanClientUpdateRevs(revs);
 }
 
 /*
  * Gear
  */
 
-static UINT16 chasehq_gear_data = 0;
-
 static WRITE16_HANDLER( chasehq_gear_w )
 {
-	COMBINE_DATA(&chasehq_gear_data);
 	/* 	Gear is stored at 0x100302. 
 		'Low' = 0x0, 'High' = 0x20, so likely bit 6 of a bit mask
 		A 16-bit machine word would be 0x100302-0x100303. 
@@ -1410,9 +1389,22 @@ static WRITE16_HANDLER( chasehq_gear_w )
 	}
 }
 
-static READ16_HANDLER( chasehq_gear_r )
+static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 {
-	return chasehq_gear_data;
+	offs_t address = offset << 1;
+	/* From debugging - main cpu (cpu0) uses static mem bank 3 */
+	COMBINE_DATA( (data16_t *)&cpu_bankbase[STATIC_BANK3][address] );
+	/*
+	 	memory offsets below are from a base of 0x100000 in 16-bit WORDS (2 bytes)
+		e.g. for 'revs' at 0x100402, the offset is 0x402 bytes == 0x201 WORDS
+	*/
+	switch (offset) {
+	case 0x100:	chasehq_time_w(0, data, mem_mask);			break;
+	case 0x181: chasehq_gear_w(0, data, mem_mask);			break;
+	case 0x200: chasehq_speed_w(0, data, mem_mask);	break;
+	case 0x201: chasehq_revs_w(0, data, mem_mask);	break;
+	default:												break;
+	}
 }
 
 
@@ -1464,13 +1456,7 @@ MEMORY_END
 
 static MEMORY_READ16_START( chasehq_readmem )
 	{ 0x000000, 0x07ffff, MRA16_ROM },
-	{ 0x100000, 0x1001ff, MRA16_RAM },	/* main CPUA ram */
-	{ 0x100200, 0x100201, chasehq_time_r },	/* custom handler for 'time' */
-	{ 0x100202, 0x100301, MRA16_RAM },	/* main CPUA ram */
-	{ 0x100302, 0x100303, chasehq_gear_r },	/* custom handler for 'gear' */
-	{ 0x100304, 0x1003ff, MRA16_RAM },	/* main CPUA ram */
-	{ 0x100400, 0x100403, chasehq_speed_revs_r },	/* custom handler for 'speed' & 'revs' */
-	{ 0x100404, 0x107fff, MRA16_RAM },	/* main CPUA ram */
+	{ 0x100000, 0x107fff, MRA16_RAM },	/* main CPUA ram */
 	{ 0x108000, 0x10bfff, sharedram_r },
 	{ 0x10c000, 0x10ffff, MRA16_RAM },	/* extra CPUA ram */
 	{ 0x400000, 0x400001, chasehq_input_bypass_r },
@@ -1485,13 +1471,7 @@ MEMORY_END
 
 static MEMORY_WRITE16_START( chasehq_writemem )
 	{ 0x000000, 0x07ffff, MWA16_ROM },
-	{ 0x100000, 0x1001ff, MWA16_RAM },
-	{ 0x100200, 0x100201, chasehq_time_w }, /* custom handler for 'time' */
-	{ 0x100202, 0x100301, MWA16_RAM },	/* main CPUA ram */
-	{ 0x100302, 0x100303, chasehq_gear_w},	/* custom handler for 'gear'  */
-	{ 0x100304, 0x1003ff, MWA16_RAM },	/* main CPUA ram */
-	{ 0x100400, 0x100403, chasehq_speed_revs_w },	/* custom handler for 'speed' & 'revs' */
-	{ 0x100404, 0x107fff, MWA16_RAM },
+	{ 0x100000, 0x107fff, chasehq_main_cpu_ram_w},
 	{ 0x108000, 0x10bfff, sharedram_w, &taitoz_sharedram, &taitoz_sharedram_size },
 	{ 0x10c000, 0x10ffff, MWA16_RAM },
 	{ 0x400000, 0x400001, TC0220IOC_halfword_portreg_w },
