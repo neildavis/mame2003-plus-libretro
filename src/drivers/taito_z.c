@@ -1342,6 +1342,34 @@ static WRITE16_HANDLER( chasehq_time_w )
 }
 
 /*
+* Credits
+*/
+
+static data16_t chasehq_credits_count = 0;
+static const data16_t chasehq_credits_count_max = 9;
+static WRITE16_HANDLER( chasehq_credits_w )
+{
+	/* Ignore RAM test values on boot*/
+	if (data <= chasehq_credits_count_max) {
+		struct InputPort *ip = Machine->input_ports;
+		while (ip->type != IPT_END) {
+			if (ip->type == IPT_START1) {
+				break;
+			}
+			ip++;
+		}
+		if (data > chasehq_credits_count || data == chasehq_credits_count_max) {
+			/* Added a credit - start automatically */
+			ip->default_value = IP_ACTIVE_HIGH;
+		} else if (data < chasehq_credits_count ) {
+			/* Credit spent - game has started */
+			ip->default_value = IP_ACTIVE_LOW;
+		}
+		chasehq_credits_count = data;
+	}
+}
+
+/*
  * Speed
  */
 
@@ -1399,10 +1427,11 @@ static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 		e.g. for 'revs' at 0x100402, the offset is 0x402 bytes == 0x201 WORDS
 	*/
 	switch (offset) {
+	case 0x084:	chasehq_credits_w(0, data, mem_mask);		break;
 	case 0x100:	chasehq_time_w(0, data, mem_mask);			break;
 	case 0x181: chasehq_gear_w(0, data, mem_mask);			break;
-	case 0x200: chasehq_speed_w(0, data, mem_mask);	break;
-	case 0x201: chasehq_revs_w(0, data, mem_mask);	break;
+	case 0x200: chasehq_speed_w(0, data, mem_mask);			break;
+	case 0x201: chasehq_revs_w(0, data, mem_mask);			break;
 	default:												break;
 	}
 }
