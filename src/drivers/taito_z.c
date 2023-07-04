@@ -1329,6 +1329,7 @@ static WRITE16_HANDLER( chasehq_time_w )
 			chasehq_time_max = time;	/* time was increased, record the new max value */
 		}
 		chasehq_time_last = time;
+#ifdef REALDASH
 		/* Calculate fuel % from time remaining since last reset */
 		UINT16 fuel_percent = 0;
 		if (chasehq_time_max > 0) {
@@ -1338,6 +1339,7 @@ static WRITE16_HANDLER( chasehq_time_w )
 			fuel_percent = 100;
 		}
 		RealDashCanClientUpdateFuel(fuel_percent);
+#endif
 	}
 }
 
@@ -1376,9 +1378,11 @@ static WRITE16_HANDLER( chasehq_credits_w )
 static WRITE16_HANDLER( chasehq_speed_w )
 {
 	/* Speed is stored in single word packed BCD at 0x100400 */
+#ifdef REALDASH
 	UINT16 speedKPH = (100 * ((data & 0xf00) >> 8)) + (10 * ((data & 0xf0) >> 4)) + (data & 0xf);
 	UINT32 speedMPH = speedKPH * 6214 / 10000;
 	RealDashCanClientUpdateSpeed((UINT16)speedMPH);
+#endif
 }
 
 /*
@@ -1390,8 +1394,10 @@ static WRITE16_HANDLER( chasehq_revs_w )
 	/* Revs is stored in single word at 0x100402
 		with an absurdly large range of 0x0000-0x5000 
 		which we will map to 0-8000 decimal */
+#ifdef REALDASH
 	UINT32 revs = data * 8000 / 0x5000;
 	RealDashCanClientUpdateRevs(revs);
+#endif
 }
 
 /*
