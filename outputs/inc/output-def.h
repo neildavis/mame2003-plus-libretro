@@ -71,6 +71,19 @@
  Chase HQ output Values
 */
 
-#define CHQ_CHASE_LAMP_STATE "siren"
+/* Chase Light/Siren animation frame 0-6 */
+#define CHQ_CHASE_LAMP_STATE_NAME "siren"
+/* Gear Low/High (0/1)*/
+#define CHQ_GEAR_NAME "gear"
+/* Revs 0-8000 */
+#define CHQ_REVS_NAME "rpm"
+/* Speed kph */
+#define CHQ_SPEED_KPH_NAME "kph"
+/* Time */
+#define CHQ_TIME_NAME "time"
+/* Turbo/Nitro count 0-5 */
+#define CHQ_TURBO_COUNT_NAME "trb_c"
+/* Active Turbo/Nitro duaration/spent 0-0xd2 (210) */
+#define CHQ_TURBO_DURATION_NAME "trb_d"
 
 #endif /* __OUTPUT_DEF_H__ */

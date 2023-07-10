@@ -1329,9 +1329,11 @@ static WRITE16_HANDLER( chasehq_time_w )
 		UINT16 timeData = (data & 0xff00) >> 8;
 		/* Time is stored in single byte packed BCD */
 		UINT16 time = 10 * ((timeData & 0xf0) >> 4) + (timeData & 0xf);
+		if (time == chasehq_time_last) return;
 		if (time > chasehq_time_last) {
 			chasehq_time_max = time;	/* time was increased, record the new max value */
 		}
+		output_set_value(CHQ_TIME_NAME, time);
 		chasehq_time_last = time;
 #ifdef REALDASH
 		/* Calculate fuel % from time remaining since last reset */
@@ -1378,28 +1380,48 @@ static WRITE16_HANDLER( chasehq_credits_w )
 /*
  * Speed
  */
-
+static data16_t chasehq_speed_last = 0xffff;
+static data16_t chasehq_speed_kph_next = 0;
+static const data16_t chasehq_kph_max = 500;
 static WRITE16_HANDLER( chasehq_speed_w )
 {
-	/* Speed is stored in single word packed BCD at 0x100400 */
+	/* 
+		Speed in KPH is stored in single word packed BCD at 0x100400 
+		LSB & MSB are written independently, LSB first, so we keep track
+		in chasehq_speed_kph_next and act when MSB is written 
+	*/
+	if (ACCESSING_LSB) {
+		chasehq_speed_kph_next = (10 * ((data & 0xf0) >> 4)) + (data & 0xf);
+		return;
+	}
+	chasehq_speed_kph_next += (100 * ((data & 0xf00) >> 8));
+	if (chasehq_speed_kph_next != chasehq_speed_last && chasehq_speed_kph_next <= chasehq_kph_max) {
+		output_set_value(CHQ_SPEED_KPH_NAME, chasehq_speed_kph_next);
+		chasehq_speed_last = chasehq_speed_kph_next;
 #ifdef REALDASH
-	UINT16 speedKPH = (100 * ((data & 0xf00) >> 8)) + (10 * ((data & 0xf0) >> 4)) + (data & 0xf);
-	UINT32 speedMPH = speedKPH * 6214 / 10000;
-	RealDashCanClientUpdateSpeed((UINT16)speedMPH);
+		UINT32 speedMPH = chasehq_speed_kph_next * 6214 / 10000;
+		RealDashCanClientUpdateSpeed((UINT16)speedMPH);
 #endif
+	}
 }
 
 /*
  * Revs
  */
 
+static data16_t chasehq_revs_last = 0xffff;
+static const data16_t chasehq_revs_max = 8000;
 static WRITE16_HANDLER( chasehq_revs_w )
 {
 	/* Revs is stored in single word at 0x100402
 		with an absurdly large range of 0x0000-0x5000 
 		which we will map to 0-8000 decimal */
-#ifdef REALDASH
 	UINT32 revs = data * 8000 / 0x5000;
+	if (revs != chasehq_revs_last && revs <= chasehq_revs_max) {
+		output_set_value(CHQ_REVS_NAME, revs);
+		chasehq_revs_last = revs;
+	}
+#ifdef REALDASH
 	RealDashCanClientUpdateRevs(revs);
 #endif
 }
@@ -1408,6 +1430,7 @@ static WRITE16_HANDLER( chasehq_revs_w )
  * Gear
  */
 
+static data16_t chasehq_gear_data_last = 0xffff;
 static WRITE16_HANDLER( chasehq_gear_w )
 {
 	/* 	Gear is stored at 0x100302. 
@@ -1416,30 +1439,51 @@ static WRITE16_HANDLER( chasehq_gear_w )
 		M68000 is big endian, so 0x100302 is MSB
 	*/
 	if (ACCESSING_MSB) {
-		UINT16 gearData = (data & 0xff00) >> 8;
-		/*
-			RealDash treats gears as numbers, but in our custom dashboards we map:
-				0 = Neutral
-				1 = Low
-				2 = High 
-		*/
-		RealDashCanClientUpdateGear((gearData & 0x20) ? 2 : 1);
+		UINT16 gearData = ((data & 0xff00) >> 8) & 0x20;
+		if (gearData != chasehq_gear_data_last) {
+			output_set_value(CHQ_GEAR_NAME, gearData > 0 ? 1 : 0);
+			/*
+				RealDash treats gears as numbers, but in our custom dashboards we map:
+					0 = Neutral
+					1 = Low
+					2 = High 
+			*/
+			RealDashCanClientUpdateGear(gearData > 0 ? 2 : 1);
+			chasehq_gear_data_last = gearData;
+		}
 	}
 }
 
 static data16_t chasehq_light_anim_last = 0xff;
+static const data16_t chasehq_light_anim_max = 6;
 static WRITE16_HANDLER( chasehq_light_anim_w )
 {
 	/*
 		The siren/light anim is at 0x101855, written as 16-bit word at 0x101854
 		M68000 is big endian, so 0x101855 is LSB
 	*/
-	if (ACCESSING_LSB) {
+	if (ACCESSING_LSB && data <= chasehq_light_anim_max) {
 		data16_t anim_frame = data & 0xff;
 		if (anim_frame != chasehq_light_anim_last) {
-			output_set_value(CHQ_CHASE_LAMP_STATE, anim_frame);
+			output_set_value(CHQ_CHASE_LAMP_STATE_NAME, anim_frame);
 			chasehq_light_anim_last = anim_frame;
 		}
+	}
+}
+
+static const data16_t chasehq_turbo_count_max = 5;
+static WRITE16_HANDLER( chasehq_turbo_count_w )
+{
+	if (data <= chasehq_turbo_count_max) {
+		output_set_value(CHQ_TURBO_COUNT_NAME, data);
+	}
+}
+
+static const data16_t chasehq_turbo_duration_max = 0xd2;
+static WRITE16_HANDLER( chasehq_turbo_duration_w )
+{
+	if (data <= chasehq_turbo_duration_max) {
+		output_set_value(CHQ_TURBO_DURATION_NAME, data);
 	}
 }
 
@@ -1456,8 +1500,10 @@ static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 	case 0x084:	chasehq_credits_w(0, data, mem_mask);		break;
 	case 0x100:	chasehq_time_w(0, data, mem_mask);			break;
 	case 0x181: chasehq_gear_w(0, data, mem_mask);			break;
+	case 0x1d1: chasehq_turbo_count_w(0, data, mem_mask);	break;
 	case 0x200: chasehq_speed_w(0, data, mem_mask);			break;
 	case 0x201: chasehq_revs_w(0, data, mem_mask);			break;
+	case 0x20a: chasehq_turbo_duration_w(0, data, mem_mask);break;
 	case 0xc2a: chasehq_light_anim_w(0, data, mem_mask);	break;
 	default:												break;
 	}
