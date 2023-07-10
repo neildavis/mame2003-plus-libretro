@@ -690,7 +690,11 @@ wrong.)
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "sndhrdw/taitosnd.h"
+
+
 #include "realdashclient.h"
+#include "output.h"
+#include "output-def.h"
 
 VIDEO_START( taitoz );
 VIDEO_START( spacegun );
@@ -1423,6 +1427,22 @@ static WRITE16_HANDLER( chasehq_gear_w )
 	}
 }
 
+static data16_t chasehq_light_anim_last = 0xff;
+static WRITE16_HANDLER( chasehq_light_anim_w )
+{
+	/*
+		The siren/light anim is at 0x101855, written as 16-bit word at 0x101854
+		M68000 is big endian, so 0x101855 is LSB
+	*/
+	if (ACCESSING_LSB) {
+		data16_t anim_frame = data & 0xff;
+		if (anim_frame != chasehq_light_anim_last) {
+			output_set_value(CHQ_CHASE_LAMP_STATE, anim_frame);
+			chasehq_light_anim_last = anim_frame;
+		}
+	}
+}
+
 static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 {
 	offs_t address = offset << 1;
@@ -1438,6 +1458,7 @@ static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 	case 0x181: chasehq_gear_w(0, data, mem_mask);			break;
 	case 0x200: chasehq_speed_w(0, data, mem_mask);			break;
 	case 0x201: chasehq_revs_w(0, data, mem_mask);			break;
+	case 0xc2a: chasehq_light_anim_w(0, data, mem_mask);	break;
 	default:												break;
 	}
 }
@@ -4623,6 +4644,7 @@ static DRIVER_INIT( taitoz )
 
 	RealDashCanClientInit();
 	RealDashCanClientStartServer();
+	output_init("chasehq");
 
 	cpua_ctrl = 0xff;
 	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);

@@ -23,6 +23,7 @@ CPPFLAGS += -I$(INC_DIR)
 SOURCES_C := \
 	$(CORE_DIR)/main.cpp \
 	$(CORE_DIR)/utils.cpp \
+	$(CORE_DIR)/chasehq.cpp \
 	$(CORE_DIR)/turbo.cpp \
 	$(CORE_DIR)/monacogp.cpp \
 	$(CORE_DIR)/aburner.cpp

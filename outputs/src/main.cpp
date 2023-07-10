@@ -17,6 +17,7 @@
 #include "aburner.h"
 #include "turbo.h"
 #include "monacogp.h"
+#include "chasehq.h"
 
 void main_event_loop() {
     int fd;
@@ -52,7 +53,7 @@ void main_event_loop() {
                 fprintf(stdout, "%s: Client hung-up pipe\n", proc_name);
                 break;
             }
-            if (3 == fscanf(stream, "%[^:]:%[^:]:%d", machine_name, output_name, &output_value)) {
+            if (3 == fscanf(stream, "%[^:]:%[^:]:%d:", machine_name, output_name, &output_value)) {
                 /* We successfully read an output command */
                 ftime(&time_now);
                 fprintf(stdout, "%s: T%ld.%03d Read output %s=%d for machine '%s'\n", proc_name, time_now.time, time_now.millitm, output_name, output_value, machine_name);
@@ -68,9 +69,14 @@ void main_event_loop() {
                     } else if (0 == strcmp(machine_name, "monacogp")) {
                         fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
                         pOutputHandler.reset(new MonacoGpOutputHandler());
+                    } else if (0 == strcmp(machine_name, "chasehq")) {
+                        fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new ChaseHqOutputHandler());
                     }
-                    pOutputHandler->init();
-                    continue;                
+                    if (pOutputHandler) {
+                        pOutputHandler->init();
+                        continue;                
+                    }
                 }
                 if (pOutputHandler) {
                     pOutputHandler->handle_output(output_name, output_value);
@@ -83,7 +89,9 @@ void main_event_loop() {
 
         // Deinitialze output handler
         fprintf(stdout, "%s: Deinit output handler\n", proc_name);
-        pOutputHandler->deinit();
+        if (pOutputHandler) {
+            pOutputHandler->deinit();
+        }
 
         /* Close the pipe ready to re-open for next client */
         fprintf(stdout, "%s: Closing stream\n", proc_name);

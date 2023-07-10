@@ -19,7 +19,7 @@
  2. The output name e.g. "lamp1"
  3. The output value, e.g. 1
 */
-#define OUTPUTS_BUF_FMT "%s:%s:%d"
+#define OUTPUTS_BUF_FMT "%s:%s:%d:"
 
 /*
  Non-ROM-specific output values
@@ -66,4 +66,11 @@
 #define OUTPUT_TURBO_STAGE_NAME "stage"
 /* Start Button LED */
 #define TURBO_LED_START 0
+
+/*
+ Chase HQ output Values
+*/
+
+#define CHQ_CHASE_LAMP_STATE "siren"
+
 #endif /* __OUTPUT_DEF_H__ */
