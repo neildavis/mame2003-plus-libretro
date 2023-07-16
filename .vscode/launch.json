@@ -1,0 +1,36 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch RetroArch chasehq",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/opt/retropie/emulators/retroarch/bin/retroarch",
+            "args": ["-L", "/opt/retropie/libretrocores/lr-mame2003-plus/mame2003_plus_libretro.so",
+                     "--config", "/opt/retropie/configs/mame-libretro/retroarch.cfg",
+                     "/home/pi/RetroPie/roms/mame-libretro/chasehq.zip",
+                     "--appendconfig", "/dev/shm/retroarch.cfg"],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+
+    ]
+}
