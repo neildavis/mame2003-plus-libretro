@@ -14,6 +14,15 @@ public:
     virtual void init() override;
     virtual void deinit() override;
     virtual void handle_output(const char *name, int value) override;
+
+private:
+    void update_turbo_count(int value);
+    void update_turbo_duration(int value);
+    void update_revs(int value);
+    void update_siren(int value);
+
+private:
+    int m_turboCount;
 };
 
 #endif // __CHASEHQ_H__
