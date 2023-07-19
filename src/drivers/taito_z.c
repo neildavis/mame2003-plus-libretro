@@ -1410,14 +1410,13 @@ static WRITE16_HANDLER( chasehq_speed_w )
  */
 
 static data16_t chasehq_revs_last = 0xffff;
-static const data16_t chasehq_revs_max = 8000;
 static WRITE16_HANDLER( chasehq_revs_w )
 {
 	/* Revs is stored in single word at 0x100402
 		with an absurdly large range of 0x0000-0x5000 
 		which we will map to 0-8000 decimal */
-	UINT32 revs = data * 8000 / 0x5000;
-	if (revs != chasehq_revs_last && revs <= chasehq_revs_max) {
+	UINT32 revs = data * CHQ_REVS_MAX / 0x5000;
+	if (revs != chasehq_revs_last && revs <= CHQ_REVS_MAX) {
 		output_set_value(CHQ_REVS_NAME, revs);
 		chasehq_revs_last = revs;
 	}

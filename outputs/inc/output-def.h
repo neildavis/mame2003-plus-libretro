@@ -77,6 +77,7 @@
 #define CHQ_GEAR_NAME "gear"
 /* Revs 0-8000 */
 #define CHQ_REVS_NAME "rpm"
+#define CHQ_REVS_MAX 8000
 /* Speed kph */
 #define CHQ_SPEED_KPH_NAME "kph"
 /* Time */
