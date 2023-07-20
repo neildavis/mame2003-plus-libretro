@@ -10,15 +10,15 @@
 using namespace udd;
 
 /* Define GPIO pins for After Burner lamp outputs */
-const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
+static const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
 
-const int kSpiSpeed = 90000000;
+static const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
 // Hence use of Point offsets below
 // It is also rendered in portrait orientation (hence use of kDisplayRotation rotation everywhere!)
-const int kDisplayWidth = 240;
-const int kDisplayHeight = 320;
-const Rotation kDisplayRotation = DEGREE_90;
+static const int kDisplayWidth = 240;
+static const int kDisplayHeight = 320;
+static const Rotation kDisplayRotation = DEGREE_90;
 
 // Colors
 Color SEGA_BLUE = Color(0, 96, 168);

@@ -12,36 +12,36 @@
 using namespace tm1637;
 using namespace udd;
 
-const int kPinStartBtn = 17;
-const int kSpiSpeed = 90000000;
+static const int kPinStartBtn = 17;
+static const int kSpiSpeed = 90000000;
 
 // Consts for drawing on ST7789
 const Color NN_GREEN = Color(61, 131, 59);
 const Color AMBER(255, 192, 0);
 const Color &bgColor = NN_GREEN;
-const int minX = 21, maxX= 226, minY = 0, maxY = 205;
+static const int minX = 21, maxX= 226, minY = 0, maxY = 205;
 const Point imgP1(minX, minY);
 const Point imgP2(maxX, maxY);
-const int imgW = maxX - minX + 1, imgH = maxY - minY + 1;
-const int imgCtrX = (imgW / 2), imgCtrY = (imgH / 2);
+static const int imgW = maxX - minX + 1, imgH = maxY - minY + 1;
+static const int imgCtrX = (imgW / 2), imgCtrY = (imgH / 2);
 // time arc consts
-const int timeArcRadius = imgW / 2;
-const int timeArcThickness = 20;
-const float timeArcStartDeg = 150.0;
-const float timeArcWarnDeg = -80;
-const float timeArcDangerDeg = -130;
-const float timeArcEndDeg = -180.0;
-const float timeArcDegreeRange = timeArcStartDeg - timeArcEndDeg;
-const float timeArcDegreeInc = timeArcDegreeRange / 100;
+static const int timeArcRadius = imgW / 2;
+static const int timeArcThickness = 20;
+static const float timeArcStartDeg = 150.0;
+static const float timeArcWarnDeg = -80;
+static const float timeArcDangerDeg = -130;
+static const float timeArcEndDeg = -180.0;
+static const float timeArcDegreeRange = timeArcStartDeg - timeArcEndDeg;
+static const float timeArcDegreeInc = timeArcDegreeRange / 100;
 // cars passed arc consts
-const int kCarsPassedTarget = 30;
-const int kCarsPassedMax = 41;
-const int carsPassedArcRadius = 50;
-const int carsPassedArcThickness = timeArcThickness;
-const float carsPassedArcStartDeg = 180.0;
-const float carsPassedArcEndDeg = -180.0;
-const float carsPassedArcDegreeRange = carsPassedArcStartDeg - carsPassedArcEndDeg;
-const float carsPassedArcDegreeInc = carsPassedArcDegreeRange / kCarsPassedMax;
+static const int kCarsPassedTarget = 30;
+static const int kCarsPassedMax = 41;
+static const int carsPassedArcRadius = 50;
+static const int carsPassedArcThickness = timeArcThickness;
+static const float carsPassedArcStartDeg = 180.0;
+static const float carsPassedArcEndDeg = -180.0;
+static const float carsPassedArcDegreeRange = carsPassedArcStartDeg - carsPassedArcEndDeg;
+static const float carsPassedArcDegreeInc = carsPassedArcDegreeRange / kCarsPassedMax;
 
 TurboOutputHandler::TurboOutputHandler() :
     m_image(imgW, imgH, bgColor),
