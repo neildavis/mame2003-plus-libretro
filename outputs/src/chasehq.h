@@ -3,9 +3,12 @@
 
 #include <memory>
 #include <udd.h>
-#include "output_handler_base.h"
-using namespace udd;
+#include <tm1637.h>
 
+#include "output_handler_base.h"
+
+using namespace udd;
+using namespace tm1637;
 
 class ChaseHqOutputHandler : public MOutputHandler {
 public:
@@ -19,10 +22,14 @@ private:
     void update_turbo_count(int value);
     void update_turbo_duration(int value);
     void update_revs(int value);
+    void update_speed(int value);
     void update_siren(int value);
 
 private:
-    int m_turboCount;
+    int m_turboCount;    
+    int m_speedKPH;
+    udd::DisplayST7735R m_display;
+    std::shared_ptr<Device> m_pTM1637;
 };
 
 #endif // __CHASEHQ_H__
