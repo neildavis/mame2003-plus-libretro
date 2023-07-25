@@ -1359,21 +1359,8 @@ static WRITE16_HANDLER( chasehq_credits_w )
 {
 	/* Ignore RAM test values on boot*/
 	if (data <= chasehq_credits_count_max) {
-		struct InputPort *ip = Machine->input_ports;
-		while (ip->type != IPT_END) {
-			if (ip->type == IPT_START1) {
-				break;
-			}
-			ip++;
-		}
-		if (data > chasehq_credits_count || data == chasehq_credits_count_max) {
-			/* Added a credit - start automatically */
-			ip->default_value = IP_ACTIVE_HIGH;
-		} else if (data < chasehq_credits_count ) {
-			/* Credit spent - game has started */
-			ip->default_value = IP_ACTIVE_LOW;
-		}
 		chasehq_credits_count = data;
+		output_set_value(CHQ_CREDITS_NAME, chasehq_credits_count);
 	}
 }
 
