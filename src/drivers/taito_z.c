@@ -1353,12 +1353,12 @@ static WRITE16_HANDLER( chasehq_time_w )
 * Credits
 */
 
-static data16_t chasehq_credits_count = 0;
+static data16_t chasehq_credits_count = 0xff;
 static const data16_t chasehq_credits_count_max = 9;
 static WRITE16_HANDLER( chasehq_credits_w )
 {
 	/* Ignore RAM test values on boot*/
-	if (data <= chasehq_credits_count_max) {
+	if (data != chasehq_credits_count && data <= chasehq_credits_count_max) {
 		chasehq_credits_count = data;
 		output_set_value(CHQ_CREDITS_NAME, chasehq_credits_count);
 	}
@@ -1458,17 +1458,21 @@ static WRITE16_HANDLER( chasehq_light_anim_w )
 }
 
 static const data16_t chasehq_turbo_count_max = 5;
+static data16_t chasehq_turbo_count = 0xff;
 static WRITE16_HANDLER( chasehq_turbo_count_w )
 {
-	if (data <= chasehq_turbo_count_max) {
+	if (data != chasehq_turbo_count && data <= chasehq_turbo_count_max) {
+		chasehq_turbo_count = data;
 		output_set_value(CHQ_TURBO_COUNT_NAME, data);
 	}
 }
 
 static const data16_t chasehq_turbo_duration_max = 0xd2;
+static data16_t chasehq_turbo_duration = 0xff;
 static WRITE16_HANDLER( chasehq_turbo_duration_w )
 {
-	if (data <= chasehq_turbo_duration_max) {
+	if (data != chasehq_turbo_duration && data <= chasehq_turbo_duration_max) {
+		chasehq_turbo_duration = data;
 		output_set_value(CHQ_TURBO_DURATION_NAME, data);
 	}
 }
