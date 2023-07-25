@@ -86,5 +86,7 @@
 #define CHQ_TURBO_COUNT_NAME "trb_c"
 /* Active Turbo/Nitro duaration/spent 0-0xd2 (210) */
 #define CHQ_TURBO_DURATION_NAME "trb_d"
+/* Number of credits */
+#define CHQ_CREDITS_NAME "credits" 
 
 #endif /* __OUTPUT_DEF_H__ */
