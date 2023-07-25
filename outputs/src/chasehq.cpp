@@ -18,12 +18,12 @@ static const int NUM_LEDS_TURBO = 5;
 
 // Pins for LEDs Shift Register
 static const int PIN_SR_BASE    = 100;  // arbitrary as long as outside RPi GPIO pin range
-static const int PIN_SR_NUM     = NUM_LEDS_REVS + NUM_LEDS_TURBO;
+static const int PIN_SR_NUM     = NUM_LEDS_REVS + NUM_LEDS_TURBO + 1;   // +1 for siren
 static const int PIN_SR_DATA    = 2;
 static const int PIN_SR_LATCH   = 3;
 static const int PIN_SR_CLK     = 4;
 // Pin to drive NPN for siren light
-static const int PIN_SIREN      = 17;
+static const int PIN_SIREN      = PIN_SR_BASE + NUM_LEDS_REVS + NUM_LEDS_TURBO;
 // SPI LCD Pins
 static const int PIN_LCD_DC     = 5;
 static const int PIN_LCD_CS     = 6;
@@ -42,14 +42,11 @@ ChaseHqOutputHandler::~ChaseHqOutputHandler() {
 void ChaseHqOutputHandler::init() {
     m_turboCount = 0;
     wiringPiSetupGpio();
-    pinMode(PIN_SIREN, OUTPUT);
     sr595Setup(PIN_SR_BASE, PIN_SR_NUM, PIN_SR_DATA, PIN_SR_CLK, PIN_SR_LATCH);
     // Set all LEDs to off
     for (int i = PIN_SR_BASE; i < PIN_SR_BASE + PIN_SR_NUM; i++) {
         digitalWrite(i, LOW);
     }
-    // Drive siren off
-    digitalWrite(PIN_SIREN, LOW);    // Setup ST7735
     // Setup ST7735 Display
     // DisplayConfiguration displayConfig;
     // displayConfig.displayType = ST7735;
@@ -79,8 +76,6 @@ void ChaseHqOutputHandler::deinit() {
     }
     // Clear TM1637
     m_pTM1637->clear();
-    // Drive siren off
-    digitalWrite(PIN_SIREN, LOW);    // Setup ST7735
 }
 
 void ChaseHqOutputHandler::handle_output(const char *name, int value) {
