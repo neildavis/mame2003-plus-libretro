@@ -1,6 +1,14 @@
 TARGET := lrmame2003osvr
 
-CPPFLAGS := -O3 -Wall -Wextra -std=c++11
+DEBUG         ?= 0
+CPPFLAGS := -Wall -Wextra -std=c++11
+# Disable optimization when debugging #####################
+ifeq ($(DEBUG), 1)
+	CPPFLAGS += -O0 -g3
+else
+	CPPFLAGS += -O3 -DNDEBUG
+endif
+
 LDFLAGS ?=
 LIBS ?= -lwiringPi -lwiringPiUDDrpi -lgpiodcxx -lTM1637Pi -ldl
 CC := g++

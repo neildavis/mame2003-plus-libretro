@@ -48,20 +48,23 @@ void ChaseHqOutputHandler::init() {
         digitalWrite(i, LOW);
     }
     // Setup ST7735 Display
-    // DisplayConfiguration displayConfig;
-    // displayConfig.displayType = ST7735;
-    // displayConfig.width = 128;
-    // displayConfig.height = 160;
-    // displayConfig.xOffset = 2;
-    // displayConfig.yOffset = 1;    
-    // displayConfig.spiSpeed = LCD_SPI_SPEED;
-    // displayConfig.spiMode = LCD_SPI_MODE;
-    // displayConfig.CS = PIN_LCD_CS;
-    // displayConfig.DC = PIN_LCD_DC;
-    // displayConfig.RST = PIN_LCD_RST;
-    // displayConfig.BLK = PIN_LCD_BLK;
-    // m_display.openDisplay(displayConfig);
-    // m_display.clearScreen(YELLOW);
+    DisplayConfiguration displayConfig;
+    displayConfig.displayType = ST7735;
+    displayConfig.width = 128;
+    displayConfig.height = 160;
+    displayConfig.xOffset = 2;
+    displayConfig.yOffset = 1;    
+    displayConfig.spiSpeed = LCD_SPI_SPEED;
+    displayConfig.spiMode = LCD_SPI_MODE;
+    displayConfig.CS = PIN_LCD_CS;
+    displayConfig.DC = PIN_LCD_DC;
+    displayConfig.RST = PIN_LCD_RST;
+    displayConfig.BLK = PIN_LCD_BLK;
+    displayConfig.invertColors = true;
+    displayConfig.BGR = false;
+    m_display.openDisplay(displayConfig);
+    m_display.printConfiguration();
+    m_display.clearScreen(YELLOW);
     // Setup TM1637
     m_pTM1637 = std::make_shared<Device>(PIN_TM1637_CLK, PIN_TM1637_DIO, GpioGPIOD);
     m_pTM1637->setColon(false);
