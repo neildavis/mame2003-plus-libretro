@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <wiringPi.h>
+#include <wiringSerial.h>
 #include <sr595.h>
 #include <tm1637_digits.h>
 
@@ -102,6 +103,10 @@ void ChaseHqOutputHandler::handle_output(const char *name, int value) {
         update_siren(value);
         return;
     }
+    if (0 == strcmp(name, CHQ_CREDITS_NAME)) {
+        update_credits(value);
+        return;
+    }
 }
 
 void ChaseHqOutputHandler::update_turbo_count(int value) {
@@ -137,4 +142,29 @@ void ChaseHqOutputHandler::update_speed(int value) {
 void ChaseHqOutputHandler::update_siren(int value) {
     int pinVal = (value < 3) ? LOW : HIGH;
     digitalWrite(PIN_SIREN, pinVal);
+}
+
+void ChaseHqOutputHandler::update_credits(int value) {
+    int ctrld3BtnId = -1;   // We'll remap 'd3' input on our controller to this value if >= 0
+    if (value != m_creditsCount) {
+        if (0 == m_creditsCount && value > 0) {
+            // We gained credits. Start/Select button reverts to 'Start'.
+            // BUTTON_START = 9
+            ctrld3BtnId = 9;
+        } else if (0 == value && m_creditsCount > 0) {
+            // We just used our last credit. Start/Select button reverts to 'Select' (Coin)
+            // BUTTON_SELECT = 8
+            ctrld3BtnId = 8;
+        }
+        if (ctrld3BtnId >= 0) {
+            // Open the serial device
+            int fd = serialOpen("/dev/ttyACM1", 115200);
+            if (0 <= fd) {
+                serialPrintf(fd, "d3=%d\n", ctrld3BtnId);
+                serialFlush(fd);
+                serialClose(fd);
+            }
+        }
+        m_creditsCount = value;
+    }
 }
