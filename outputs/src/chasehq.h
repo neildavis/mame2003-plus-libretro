@@ -24,10 +24,12 @@ private:
     void update_revs(int value);
     void update_speed(int value);
     void update_siren(int value);
+    void update_credits(int value);
 
 private:
     int m_turboCount;    
     int m_speedKPH;
+    int m_creditsCount;
     udd::DisplayST7735R m_display;
     std::shared_ptr<Device> m_pTM1637;
 };
