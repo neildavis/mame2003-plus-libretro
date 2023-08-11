@@ -88,5 +88,7 @@
 #define CHQ_TURBO_DURATION_NAME "trb_d"
 /* Number of credits */
 #define CHQ_CREDITS_NAME "credits" 
+/* Start Button LED */
+#define CHQ_LED_START 0
 
 #endif /* __OUTPUT_DEF_H__ */

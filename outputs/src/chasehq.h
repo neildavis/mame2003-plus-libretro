@@ -25,6 +25,7 @@ private:
     void update_speed(int value);
     void update_siren(int value);
     void update_credits(int value);
+    void update_start_button(int value);
 
 private:
     int m_turboCount;    

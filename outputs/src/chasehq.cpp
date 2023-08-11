@@ -107,6 +107,11 @@ void ChaseHqOutputHandler::handle_output(const char *name, int value) {
         update_credits(value);
         return;
     }
+    int n = parseLedOutputName(name);
+    if (n == CHQ_LED_START) {
+        update_start_button(value);
+        return;
+    }
 }
 
 void ChaseHqOutputHandler::update_turbo_count(int value) {
@@ -167,4 +172,7 @@ void ChaseHqOutputHandler::update_credits(int value) {
         }
         m_creditsCount = value;
     }
+}
+
+void ChaseHqOutputHandler::update_start_button(int value) {
 }
