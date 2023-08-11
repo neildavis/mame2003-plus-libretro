@@ -1477,6 +1477,32 @@ static WRITE16_HANDLER( chasehq_turbo_duration_w )
 	}
 }
 
+static data16_t chasehq_start_button_last = 0xff;
+static WRITE16_HANDLER( chasehq_start_button_w )
+{
+	/*
+		Word at 0x102cc2 contains various game state data
+		But we're only interested in start screen when 0x102cc2 == 01
+		Value at 0x102cc3 loops from 00->0x1f but with alternate 'resets':
+		- 0x1f -> 0x0: 'press start button' text disappears
+		- 0x1f -> 0x1d -> 0x01: 'press start button' text appears
+	*/
+	if (ACCESSING_MSB) {
+		data16_t msb = (data & 0xff00) >> 8;
+		if (msb != 0x01) {
+			return;	// not on start screen
+		}
+		data16_t lsb = data & 0xff;
+		if (lsb != chasehq_start_button_last) {
+			if (0x1f == chasehq_start_button_last) {
+				/* We are at a start button on/off point */
+				output_set_led_value(CHQ_LED_START, (lsb == 0x1d) ? 1 : 0);
+			}
+			chasehq_start_button_last = lsb;
+		}
+	}
+}
+
 static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 {
 	offs_t address = offset << 1;
@@ -1495,6 +1521,7 @@ static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 	case 0x201: chasehq_revs_w(0, data, mem_mask);			break;
 	case 0x20a: chasehq_turbo_duration_w(0, data, mem_mask);break;
 	case 0xc2a: chasehq_light_anim_w(0, data, mem_mask);	break;
+	case 0x1661: chasehq_start_button_w(0, data, mem_mask);	break;
 	default:												break;
 	}
 }
