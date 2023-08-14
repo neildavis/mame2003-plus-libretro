@@ -13,18 +13,19 @@
 
 using namespace udd;
 
-static const int NUM_LEDS_REVS  = 8;
-static const int NUM_LEDS_TURBO = 5;
-
 
 // Pins for LEDs Shift Register
 static const int PIN_SR_BASE    = 100;  // arbitrary as long as outside RPi GPIO pin range
-static const int PIN_SR_NUM     = NUM_LEDS_REVS + NUM_LEDS_TURBO + 1;   // +1 for siren
-static const int PIN_SR_DATA    = 2;
-static const int PIN_SR_LATCH   = 3;
-static const int PIN_SR_CLK     = 4;
+static const int PIN_SR_NUM     = 8;    // Single 74H595 Qa-Qh
+static const int PIN_SR_DATA    = 23;
+static const int PIN_SR_LATCH   = 27;
+static const int PIN_SR_CLK     = 22;
 // Pin to drive NPN for siren light
-static const int PIN_SIREN      = PIN_SR_BASE + NUM_LEDS_REVS + NUM_LEDS_TURBO;
+static const int PIN_SIREN      = PIN_SR_BASE + 1;  // 74H595 Qb
+// Pins to drive buttton LEDs
+static const int PIN_LED_TURBO  = PIN_SR_BASE + 4;  // 74H595 Qe
+static const int PIN_LED_START  = PIN_SR_BASE + 5;  // 74H595 Qf
+static const int PIN_LED_COIN   = PIN_SR_BASE + 6;  // 74H595 Qg
 // SPI LCD Pins
 static const int PIN_LCD_DC     = 5;
 static const int PIN_LCD_CS     = 6;
@@ -34,8 +35,8 @@ static const int PIN_LCD_BLK    = 12;
 static const int LCD_SPI_MODE = 0;
 static const int LCD_SPI_SPEED = 35000000;
 // TM1637 config
-static const int PIN_TM1637_CLK = 22;
-static const int PIN_TM1637_DIO = 27;
+static const int PIN_TM1637_CLK = 2;
+static const int PIN_TM1637_DIO = 3;
 
 ChaseHqOutputHandler::~ChaseHqOutputHandler() {
 }
@@ -116,23 +117,26 @@ void ChaseHqOutputHandler::handle_output(const char *name, int value) {
 
 void ChaseHqOutputHandler::update_turbo_count(int value) {
     m_turboCount = value;
-    for (int led = 0; led < NUM_LEDS_TURBO; led++) {
-        digitalWrite(PIN_SR_BASE + NUM_LEDS_REVS + led, value > led ? HIGH : LOW);
-    }
+    // Turn the turbo button led on if we have any turbos left
+    digitalWrite(PIN_LED_TURBO, value > 0 ? HIGH : LOW);
 }
 
+static const int chasehq_turbo_duration_max = 0xd2;
 void ChaseHqOutputHandler::update_turbo_duration(int value) {
     int ledVal = ((value % 30) > 14) ? HIGH : LOW;
-    int ledIdx = PIN_SR_BASE + NUM_LEDS_REVS + m_turboCount;
-    digitalWrite(ledIdx, ledVal);
+    digitalWrite(PIN_LED_TURBO, ledVal);
+    // When turbo finishes, reset button LED to be based on count on remaining turbos
+    if (chasehq_turbo_duration_max == value) {
+        update_turbo_count(m_turboCount);
+    }
 }
 
 void ChaseHqOutputHandler::update_revs(int value) {
-    // This could be done more efficiently!
-    int rK = floor(value / 1000.0);
-    for (int led = 0; led < NUM_LEDS_REVS; led++) {
-        digitalWrite(PIN_SR_BASE + led, rK >= led + 1 ? HIGH : LOW);
-    }
+    // // This could be done more efficiently!
+    // int rK = floor(value / 1000.0);
+    // for (int led = 0; led < NUM_LEDS_REVS; led++) {
+    //     digitalWrite(PIN_SR_BASE + led, rK >= led + 1 ? HIGH : LOW);
+    // }
 }
 
 void ChaseHqOutputHandler::update_speed(int value) {
@@ -149,30 +153,19 @@ void ChaseHqOutputHandler::update_siren(int value) {
     digitalWrite(PIN_SIREN, pinVal);
 }
 
+static const int chasehq_credits_count_max = 9;
 void ChaseHqOutputHandler::update_credits(int value) {
-    int ctrld3BtnId = -1;   // We'll remap 'd3' input on our controller to this value if >= 0
     if (value != m_creditsCount) {
-        if (0 == m_creditsCount && value > 0) {
-            // We gained credits. Start/Select button reverts to 'Start'.
-            // BUTTON_START = 9
-            ctrld3BtnId = 9;
-        } else if (0 == value && m_creditsCount > 0) {
-            // We just used our last credit. Start/Select button reverts to 'Select' (Coin)
-            // BUTTON_SELECT = 8
-            ctrld3BtnId = 8;
-        }
-        if (ctrld3BtnId >= 0) {
-            // Open the serial device
-            int fd = serialOpen("/dev/ttyACM1", 115200);
-            if (0 <= fd) {
-                serialPrintf(fd, "d3=%d\n", ctrld3BtnId);
-                serialFlush(fd);
-                serialClose(fd);
-            }
+        if (value < m_creditsCount) {
+            // We spent a credit to start the game. Disable start button LED
+            digitalWrite(PIN_LED_START, LOW);
         }
         m_creditsCount = value;
     }
+    // Turn the coin button LED on if we can add more credits
+    digitalWrite(PIN_LED_COIN, value < chasehq_credits_count_max ? HIGH : LOW);
 }
 
 void ChaseHqOutputHandler::update_start_button(int value) {
+    digitalWrite(PIN_LED_START, value == 0 ? HIGH : LOW);
 }
