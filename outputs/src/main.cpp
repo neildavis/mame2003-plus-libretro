@@ -18,7 +18,7 @@
 
 using namespace udd;
 
-DisplayConfigruation displayConfig;
+DisplayConfiguration displayConfig;
 DisplayST7789R display = DisplayST7789R();
 
 /* Define GPIO pins for After Burner lamp outputs */
