@@ -315,6 +315,8 @@ INPUT_PORTS_START( aburner )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) /* missle */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x100, IP_ACTIVE_LOW, IPT_BUTTON4 )
+	PORT_BIT( 0x200, IP_ACTIVE_LOW, IPT_BUTTON5 )
 
 	SYS16_COINAGE /* DSWA */ /* wrong! */
 
@@ -485,6 +487,9 @@ INPUT_PORTS_END
 /*****************************************************************************/
 /* aburner hardware motor/moving cockpit abstraction */
 
+#define MOTOR_POS_MIN	0x56
+#define MOTOR_POS_MAX	0xae
+UINT16 motor_pos_x = 0x80, motor_pos_y = 0x80, motor_speed_x = 0, motor_speed_y = 0, motor_status = 0;
 static WRITE16_HANDLER( aburner_motor_power_w ){
 	/*	most significant 4 bits:
 			vertical motor speed
@@ -510,21 +515,61 @@ static WRITE16_HANDLER( aburner_motor_power_w ){
 				0xb
 				0xc (left, fast)
 	*/
+	motor_speed_y = (data & 0b11110000) >> 4;
+	motor_speed_x = data & 0b1111;
+	log_cb(RETRO_LOG_INFO, LOGPRE  "ABURNER2 Motor: H:%x V:%x\n", motor_speed_x, motor_speed_y );
 }
 
+#define MOTOR_STATUS_MASK_L	0b00100000
+#define MOTOR_STATUS_MASK_R	0b00001000
+#define MOTOR_STATUS_MASK_D 0b00000100
+#define MOTOR_STATUS_MASK_U	0b000000001
 static READ16_HANDLER( aburner_motor_status_r ){
 	/* --L-RD-U
 		each bit, if set, indicates that the moving cockpit has reached it's
 		extreme position in a particular direction
 		(i.e. the motor can't move it further)
 	*/
-	return 0x2d;
+	return motor_status;
 }
+
 static UINT8 aburner_motor_xpos( void ){ /* poll cockpit horizontal position */
-	return (0xb0+0x50)/2; /* expected values are in the range 0x50..0xb0 */
+	motor_pos_x = motor_pos_x + 0x8 - motor_speed_x;
+	if (MOTOR_POS_MIN >= motor_pos_x) {
+		motor_pos_x = MOTOR_POS_MIN;
+		motor_status |= MOTOR_STATUS_MASK_L;	// Set Limit L
+		motor_status &= ~MOTOR_STATUS_MASK_R;	// Clear Limit R
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X LIMIT L\n");
+	} else if (MOTOR_POS_MAX <= motor_pos_x ) {
+		motor_pos_x = MOTOR_POS_MAX;
+		motor_status |= MOTOR_STATUS_MASK_R;	// Set Limit R
+		motor_status &= ~MOTOR_STATUS_MASK_L;	// Clear Limit L
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X LIMIT R\n");
+	} else  {
+		motor_status &= ~(MOTOR_STATUS_MASK_L | MOTOR_STATUS_MASK_R) ;	// Clear Limit L & Limit R
+	}
+
+	log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X pos: %x\n", motor_pos_x);
+	return motor_pos_x; /* expected values are in the range 0x50..0xb0 */
 }
+
 static UINT8 aburner_motor_ypos( void ){ /* poll cockpit vertical position */
-	return (0xb0+0x50)/2; /* expected values are in the range 0x50..0xb0 */
+	motor_pos_y = motor_pos_y + 0x8 - motor_speed_y;
+	if (MOTOR_POS_MIN >= motor_pos_y) {
+		motor_pos_y = MOTOR_POS_MIN;
+		motor_status |= MOTOR_STATUS_MASK_D;	// Set Limit D
+		motor_status &= ~MOTOR_STATUS_MASK_U;	// Clear Limit U
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y LIMIT U\n");
+	} else if (MOTOR_POS_MAX <= motor_pos_y ) {
+		motor_pos_y = MOTOR_POS_MAX;
+		motor_status |= MOTOR_STATUS_MASK_U;	// Set Limit U
+		motor_status &= ~MOTOR_STATUS_MASK_D;	// Clear Limit D
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y LIMIT D\n");
+	} else {
+		motor_status &= ~(MOTOR_STATUS_MASK_U | MOTOR_STATUS_MASK_D) ;	// Clear Limit U & Limit D
+	}
+	log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y pos: %x\n", motor_pos_y);
+	return motor_pos_y; /* expected values are in the range 0x50..0xb0 */
 }
 
 /*****************************************************************************/
