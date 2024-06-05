@@ -487,9 +487,11 @@ INPUT_PORTS_END
 /*****************************************************************************/
 /* aburner hardware motor/moving cockpit abstraction */
 
-#define MOTOR_POS_MIN	0x56
-#define MOTOR_POS_MAX	0xae
-UINT16 motor_pos_x = 0x80, motor_pos_y = 0x80, motor_speed_x = 0, motor_speed_y = 0, motor_status = 0;
+#define MOTOR_POS_MIN_X	0x60
+#define MOTOR_POS_MAX_X	0xaa
+#define MOTOR_POS_MIN_Y	0x60
+#define MOTOR_POS_MAX_Y	0xaa
+UINT16 motor_pos_x = 0x80, motor_pos_y = 0x80, motor_speed_x = 0, motor_speed_y = 0, motor_status = 0, motor_frame_count = 0;
 static WRITE16_HANDLER( aburner_motor_power_w ){
 	/*	most significant 4 bits:
 			vertical motor speed
@@ -517,7 +519,7 @@ static WRITE16_HANDLER( aburner_motor_power_w ){
 	*/
 	motor_speed_y = (data & 0b11110000) >> 4;
 	motor_speed_x = data & 0b1111;
-	log_cb(RETRO_LOG_INFO, LOGPRE  "ABURNER2 Motor: H:%x V:%x\n", motor_speed_x, motor_speed_y );
+	//log_cb(RETRO_LOG_INFO, LOGPRE  "ABURNER2 Motor: H:%x V:%x\n", motor_speed_x, motor_speed_y );
 }
 
 #define MOTOR_STATUS_MASK_L	0b00100000
@@ -530,45 +532,69 @@ static READ16_HANDLER( aburner_motor_status_r ){
 		extreme position in a particular direction
 		(i.e. the motor can't move it further)
 	*/
+	if (++motor_frame_count == 4) {
+		motor_frame_count = 0;
+	}
 	return motor_status;
 }
 
 static UINT8 aburner_motor_xpos( void ){ /* poll cockpit horizontal position */
-	motor_pos_x = motor_pos_x + 0x8 - motor_speed_x;
-	if (MOTOR_POS_MIN >= motor_pos_x) {
-		motor_pos_x = MOTOR_POS_MIN;
+	UINT16 motor_inc_x = 0x8 - motor_speed_x;
+	if (abs(motor_inc_x) < motor_frame_count) {
+		return motor_pos_x;
+	}
+	UINT16 new_motor_pos_x = motor_pos_x + motor_inc_x;
+	if (MOTOR_POS_MIN_X >= new_motor_pos_x) {
+		new_motor_pos_x = MOTOR_POS_MIN_X;
 		motor_status |= MOTOR_STATUS_MASK_L;	// Set Limit L
 		motor_status &= ~MOTOR_STATUS_MASK_R;	// Clear Limit R
-		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X LIMIT L\n");
-	} else if (MOTOR_POS_MAX <= motor_pos_x ) {
-		motor_pos_x = MOTOR_POS_MAX;
+	} else if (MOTOR_POS_MAX_X <= new_motor_pos_x ) {
+		new_motor_pos_x = MOTOR_POS_MAX_X;
 		motor_status |= MOTOR_STATUS_MASK_R;	// Set Limit R
 		motor_status &= ~MOTOR_STATUS_MASK_L;	// Clear Limit L
-		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X LIMIT R\n");
-	} else  {
+	} else {
 		motor_status &= ~(MOTOR_STATUS_MASK_L | MOTOR_STATUS_MASK_R) ;	// Clear Limit L & Limit R
 	}
-
-	log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X pos: %x\n", motor_pos_x);
+	if (new_motor_pos_x != motor_pos_x) {
+		motor_pos_x = new_motor_pos_x;
+		char limit_str[20] = {0};
+		if (motor_status & MOTOR_STATUS_MASK_L) {
+			strcpy(limit_str, "LIMIT LEFT");
+		} else if (motor_status & MOTOR_STATUS_MASK_R) {
+			strcpy(limit_str, "LIMIT RIGHT");
+		}
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor X pos: %x %s\n", motor_pos_x, limit_str);
+	}
 	return motor_pos_x; /* expected values are in the range 0x50..0xb0 */
 }
 
 static UINT8 aburner_motor_ypos( void ){ /* poll cockpit vertical position */
-	motor_pos_y = motor_pos_y + 0x8 - motor_speed_y;
-	if (MOTOR_POS_MIN >= motor_pos_y) {
-		motor_pos_y = MOTOR_POS_MIN;
+	UINT16 motor_inc_y = 0x8 - motor_speed_y;
+	if (abs(motor_inc_y) < motor_frame_count) {
+		return motor_pos_y;
+	}
+	UINT16 new_motor_pos_y = motor_pos_y + motor_inc_y;
+	if (MOTOR_POS_MIN_Y >= motor_pos_y) {
+		new_motor_pos_y = MOTOR_POS_MIN_Y;
 		motor_status |= MOTOR_STATUS_MASK_D;	// Set Limit D
 		motor_status &= ~MOTOR_STATUS_MASK_U;	// Clear Limit U
-		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y LIMIT U\n");
-	} else if (MOTOR_POS_MAX <= motor_pos_y ) {
-		motor_pos_y = MOTOR_POS_MAX;
+	} else if (MOTOR_POS_MAX_Y <= new_motor_pos_y ) {
+		new_motor_pos_y = MOTOR_POS_MAX_Y;
 		motor_status |= MOTOR_STATUS_MASK_U;	// Set Limit U
 		motor_status &= ~MOTOR_STATUS_MASK_D;	// Clear Limit D
-		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y LIMIT D\n");
 	} else {
 		motor_status &= ~(MOTOR_STATUS_MASK_U | MOTOR_STATUS_MASK_D) ;	// Clear Limit U & Limit D
 	}
-	log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y pos: %x\n", motor_pos_y);
+	if (new_motor_pos_y != motor_pos_y) {
+		motor_pos_y = new_motor_pos_y;
+		char limit_str[20] = {0};
+		if (motor_status & MOTOR_STATUS_MASK_D) {
+			strcpy(limit_str, "LIMIT DOWN");
+		} else if (motor_status & MOTOR_STATUS_MASK_U) {
+			strcpy(limit_str, "LIMIT UP");
+		}
+		log_cb(RETRO_LOG_INFO, LOGPRE "ABURNER2: Motor Y pos: %x %s\n", motor_pos_y, limit_str);
+	}
 	return motor_pos_y; /* expected values are in the range 0x50..0xb0 */
 }
 
