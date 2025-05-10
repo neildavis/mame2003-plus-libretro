@@ -127,7 +127,7 @@ int parseLedOutputName(const char *output_name) {
 
  void aburner_altitude_warning(bool warn) {
      /* Not sure this is used? */
-     printf("%s: After Burner ALTITUDE WARNING %s\n", proc_name, warn? "ON" : "OFF");
+     /* printf("%s: After Burner ALTITUDE WARNING %s\n", proc_name, warn? "ON" : "OFF"); */
  }
 
  void aburner_start_led(bool on) {
