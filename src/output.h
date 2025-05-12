@@ -24,17 +24,17 @@ void output_set_indexed_value(const char *basename, int index, int value);
     INLINES
 ***************************************************************************/
 
-INLINE void output_set_led_value(int index, int value)
+static inline void output_set_led_value(int index, int value)
 {
 	output_set_indexed_value("led", index, value ? 1 : 0);
 }
 
-INLINE void output_set_lamp_value(int index, int value)
+static inline void output_set_lamp_value(int index, int value)
 {
 	output_set_indexed_value("lamp", index, value);
 }
 
-INLINE void output_set_digit_value(int index, int value)
+static inline void output_set_digit_value(int index, int value)
 {
 	output_set_indexed_value("digit", index, value);
 }
