@@ -27,6 +27,7 @@ Special thanks to:
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
 #include "system16.h"
+#include "output-def.h"
 
 /*****************************************************************************/
 /* After Burner I (Japanese Version)
@@ -559,21 +560,54 @@ static WRITE16_HANDLER( aburner_unknown_w ){
 	COMBINE_DATA( &aburner_unknown );
 }
 
+static inline UINT32 aburner_get_score(void) {
+	/*
+		SCORE is LONG word (4 bytes) at 0xff8884-0xff8887 (BIG endian).
+		This is BYTE offsets of 0x884-0x887 bytes == 442/443 WORD offsets from sys16_workingram BASE
+	*/
+	return ((UINT32)(sys16_workingram[0x442]) << 16) | ((UINT32)(sys16_workingram[0x443]));
+} 
+
+static UINT32 aburner_score = 0;
+static UINT32 aburner_frames_since_score_update = 0;
+const static UINT32 aburner_score_update_frames_threshold = 3;
+static WRITE16_HANDLER( aburner_sys16_workingram_w ){
+	COMBINE_DATA( sys16_workingram + offset );
+	/*
+		SCORE is LONG word (4 bytes) at 0xff8884-0xff8887 (BIG endian).
+		This is BYTE offsets of 0x884-0x887 bytes == 442/443 WORD offsets from sys16_workingram BASE
+		LSW is written FIRST in byte order of MSB/LSB
+		MSW is written SECOND in byte order MSB/LSB - so we update on MSW & LSB
+	*/
+	if (0x442 == offset && ACCESSING_LSB16) {
+		/* SCORE is changing */
+		UINT32 new_score = aburner_get_score();
+		if (aburner_score != new_score) {
+			aburner_score = new_score;
+			if (aburner_frames_since_score_update >= aburner_score_update_frames_threshold) {
+				/* ENABLE horizon gauge */
+				output_set_led_value(AFTER_BURNER_LED_HORIZON_ENABLE, 1);
+			}
+			aburner_frames_since_score_update = 0;
+		}
+	}
+}
+
 static WRITE16_HANDLER( aburner_lamp_w ){
 
 	
 	if (!bit_equal(aburner_lamp, data, 2)) {
-		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_ALTITUDE_WARNING, (data >> 1) & 0x01);	/* altitude warning lamp */
 	}
 	
 	if (!bit_equal(aburner_lamp, data, 3)) {
-		output_set_led_value(0, (data >> 2) & 0x01);	/* start lamp */
+		output_set_led_value(AFTER_BURNER_LED_START, (data >> 2) & 0x01);	/* start lamp */
 	}
 	if (!bit_equal(aburner_lamp, data, 6)) {
-		output_set_lamp_value(0, (data >> 5) & 0x01);	/* lock on lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_LOCK_ON, (data >> 5) & 0x01);	/* lock on lamp */
 	}
 	if (!bit_equal(aburner_lamp, data, 7)) {
-		output_set_lamp_value(1, (data >> 6) & 0x01);	/* danger lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_DANGER, (data >> 6) & 0x01);	/* danger lamp */
 
 	}
 	COMBINE_DATA( &aburner_lamp );
@@ -784,7 +818,7 @@ static MEMORY_WRITE16_START( aburner_writemem )
 	{ 0x2e8000, 0x2e801f, math1_compare_w },		/* includes sound latch! */
 
 	{ 0x2ec000, 0x2ee001, SYS16_MWA16_ROADRAM, &sys16_roadram },	/* 125,126 */
-	{ 0xff8000, 0xffffff, SYS16_MWA16_WORKINGRAM, &sys16_workingram },	/* 55,60 */
+	{ 0xff8000, 0xffffff, aburner_sys16_workingram_w, &sys16_workingram },	/* 55,60 */
 MEMORY_END
 
 static MEMORY_READ16_START( aburner_readmem2 )
@@ -889,10 +923,15 @@ static DRIVER_INIT( aburner2 ){
 }
 
 INTERRUPT_GEN( aburner_interrupt ){
-	if( cpu_getiloops()!=0 )
+	if( cpu_getiloops()!=0 ) {
 		irq2_line_hold(); /* (?) updates sound and inputs */
-	else
+	} else {
 		irq4_line_hold(); /* vblank */
+		if (++aburner_frames_since_score_update == aburner_score_update_frames_threshold) {
+			/* DISABLE horizon gauge */
+			output_set_led_value(AFTER_BURNER_LED_HORIZON_ENABLE, 0);
+		}
+	}
 }
 
 static MACHINE_DRIVER_START( aburner )

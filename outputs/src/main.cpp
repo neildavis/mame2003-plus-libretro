@@ -23,6 +23,7 @@ DisplayST7789R display = DisplayST7789R();
 
 /* Define GPIO pins for After Burner lamp outputs */
 const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
+const int GPIO_HORIZON_ENABLE = 16; /* Horizon enable will be on GPIO/BCM pin 16 */
 
 const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
@@ -75,6 +76,8 @@ void initWiringPi() {
 	wiringPiSetupGpio();  // use BCM pin numbers
 	pinMode(GPIO_LAMP_DANGER, OUTPUT);
     digitalWrite(GPIO_LAMP_DANGER, 0);
+	pinMode(GPIO_HORIZON_ENABLE, OUTPUT);
+    digitalWrite(GPIO_HORIZON_ENABLE, 0);
 }
 
 void initImages() {
@@ -135,6 +138,10 @@ int parseLedOutputName(const char *output_name) {
     display.showImage(image, point_start_tl, point_start_br, kDisplayRotation);
 }
 
+ void aburner_horizon_enable(bool enable) {
+    digitalWrite(GPIO_HORIZON_ENABLE, enable ? 1 : 0);
+ }
+
  void aburner_output(const char *output_name, int value) {
     int n;
     n = parseLampOutputName(output_name);
@@ -156,7 +163,11 @@ int parseLedOutputName(const char *output_name) {
         if (AFTER_BURNER_LED_START == n) {
             /* After Burner Start LED */
             aburner_start_led(value != 0);
+        } else if (AFTER_BURNER_LED_HORIZON_ENABLE == n) {
+            /* After Burner Horizon enable */
+            aburner_horizon_enable(value != 0);
         }
+        
         return;
     }
 }
