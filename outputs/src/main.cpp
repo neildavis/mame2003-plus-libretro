@@ -9,8 +9,6 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
-#include <pwd.h>
-
 #include <wiringPi.h>
 #include <udd.h>
 
@@ -22,7 +20,9 @@ DisplayConfiguration displayConfig;
 DisplayST7789R display = DisplayST7789R();
 
 /* Define GPIO pins for After Burner lamp outputs */
-const int GPIO_LAMP_DANGER = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
+const int GPIO_LAMP_DANGER = 23;    /* Corrected is Force Feedback signal */
+const int GPIO_LAMP_LOCK = 24;    /* Corrected is LOCK light*/
+const int GPIO_LAMP_ALT = 27;    /* Corrected is DANGER Light */
 const int GPIO_HORIZON_ENABLE = 16; /* Horizon enable will be on GPIO/BCM pin 16 */
 
 const int kSpiSpeed = 90000000;
@@ -66,7 +66,7 @@ void configureDisplay() {
     displayConfig.CS = 5;   // SPI Chip Select (we're using SPI0 with MOSI/SCLK on BCM 10/11 but overriding use of CE0/CE1)
     displayConfig.DC = 6;   // TFT SPI Data or Command selector
     displayConfig.RST = 13; // Display Reset
-    displayConfig.BLK = -1; // ?? Not used
+    displayConfig.BLK = 4; // ?? Not used
 
     display.openDisplay(displayConfig);
     display.clearScreen(SEGA_BLUE);
@@ -76,6 +76,10 @@ void initWiringPi() {
 	wiringPiSetupGpio();  // use BCM pin numbers
 	pinMode(GPIO_LAMP_DANGER, OUTPUT);
     digitalWrite(GPIO_LAMP_DANGER, 0);
+	pinMode(GPIO_LAMP_LOCK, OUTPUT);
+    digitalWrite(GPIO_LAMP_LOCK, 0);
+	pinMode(GPIO_LAMP_ALT, OUTPUT);
+    digitalWrite(GPIO_LAMP_ALT, 0);
 	pinMode(GPIO_HORIZON_ENABLE, OUTPUT);
     digitalWrite(GPIO_HORIZON_ENABLE, 0);
 }
@@ -122,6 +126,7 @@ int parseLedOutputName(const char *output_name) {
  void aburner_lock(bool lock) {
     Image &image = lock ? bmp_lock : bmp_clear_lock;
     display.showImage(image, point_lock_tl, point_lock_br, kDisplayRotation);
+    digitalWrite(GPIO_LAMP_LOCK, lock ? 1 : 0);
 }
 
  void aburner_danger(bool danger) {
@@ -131,6 +136,7 @@ int parseLedOutputName(const char *output_name) {
  void aburner_altitude_warning(bool warn) {
      /* Not sure this is used? */
      /* printf("%s: After Burner ALTITUDE WARNING %s\n", proc_name, warn? "ON" : "OFF"); */
+     digitalWrite(GPIO_LAMP_ALT, warn ? 1 : 0);
  }
 
  void aburner_start_led(bool on) {
@@ -140,7 +146,7 @@ int parseLedOutputName(const char *output_name) {
 
  void aburner_horizon_enable(bool enable) {
     digitalWrite(GPIO_HORIZON_ENABLE, enable ? 1 : 0);
- }
+}
 
  void aburner_output(const char *output_name, int value) {
     int n;
@@ -167,7 +173,6 @@ int parseLedOutputName(const char *output_name) {
             /* After Burner Horizon enable */
             aburner_horizon_enable(value != 0);
         }
-        
         return;
     }
 }
