@@ -9,6 +9,8 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
+#include <pwd.h>
+
 #include <wiringPi.h>
 #include <udd.h>
 
