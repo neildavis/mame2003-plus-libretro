@@ -570,7 +570,7 @@ static inline UINT32 aburner_get_score(void) {
 
 static UINT32 aburner_score = 0;
 static UINT32 aburner_frames_since_score_update = 0;
-const static UINT32 aburner_score_update_frames_threshold = 3;
+const static UINT32 aburner_score_update_frames_threshold = 5;
 static WRITE16_HANDLER( aburner_sys16_workingram_w ){
 	COMBINE_DATA( sys16_workingram + offset );
 	/*
