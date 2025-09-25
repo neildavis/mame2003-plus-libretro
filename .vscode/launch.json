@@ -28,7 +28,7 @@
             ]
         },
         {
-            "name": "(gdb) Launch RetroArch chasehq",
+            "name": "(gdb) RetroPie chasehq",
             "type": "cppdbg",
             "request": "launch",
             "program": "/opt/retropie/emulators/retroarch/bin/retroarch",
@@ -53,7 +53,32 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "(gdb) RetroArch shangonb",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/retroarch",
+            "args": ["-L", "${workspaceFolder}/mame2003_plus_libretro.so",
+                     "${HOME}/roms/mame/0.78/shangonb.zip",
+                    ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
         }
-
     ]
 }
