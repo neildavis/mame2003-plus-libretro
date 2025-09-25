@@ -5,8 +5,11 @@
   See license.txt for more details.
 */
 
+
 #include "realdashclient.h"
+#ifdef REALDASH
 #include <dbus/dbus.h>
+#endif /* REALDASH */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -150,6 +153,7 @@ void RealDashCanClientResetDefaults()
 /*
  Private methods
 */
+#ifdef REALDASH
 
 void dbusMethodCallSync(const char *methodName) {
     DBusMessage* msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME,
@@ -220,3 +224,4 @@ void dbusMethodCallIgnoreReturn(const char *methodName, int type, const void *va
     dbus_message_unref(msg);
 }
 
+#endif
