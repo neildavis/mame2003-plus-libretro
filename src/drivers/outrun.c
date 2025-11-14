@@ -812,13 +812,13 @@ static WRITE16_HANDLER( outrun_time_w )
 	COMBINE_DATA( &outrun_time_data );
 	/* Time is stored in single byte packed BCD */
 	if (ACCESSING_LSB) {
+		UINT16 fuel_percent = 0;
 		UINT16 time = 10 * ((data & 0x00f0) >> 4) + (data & 0x000f);
 		if (time > outrun_time_last) {
 			outrun_time_max = time;	/* time was increased, record the new max value */
 		}
 		outrun_time_last = time;
 		/* Calculate fuel % from time remaining since last reset */
-		UINT16 fuel_percent = 0;
 		if (outrun_time_max > 0) {
 			fuel_percent = time * 100 / outrun_time_max;
 		}
@@ -980,12 +980,12 @@ static void outrun_update_proc( void ){
 }
 
 static MACHINE_INIT( outrun ){
-	RealDashCanClientInit();
-	RealDashCanClientStartServer();
 	static int bank[8] = {
 		7,0,1,2,
 		3,4,5,6
 	};
+	RealDashCanClientInit();
+	RealDashCanClientStartServer();
 	sys16_obj_bank = bank;
 	sys16_spritesystem = sys16_sprite_outrun;
 	sys16_textlayer_lo_min=0;

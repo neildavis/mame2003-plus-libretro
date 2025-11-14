@@ -36,11 +36,10 @@ uint16_t m_revsRpm;
 uint16_t m_speedMph;
 uint16_t m_fuelPercent;
 uint16_t m_gear;
-uint8_t m_initialized;
+uint8_t m_initialized = 0;
 
 /** c'tor */
-void RealDashCanClientInit() {
-    m_initialized = 0;
+void RealDashCanClientInit(void) {
 #ifdef REALDASH
     DBusError err;
     int ret;
@@ -156,6 +155,7 @@ void RealDashCanClientResetDefaults()
 #ifdef REALDASH
 
 void dbusMethodCallSync(const char *methodName) {
+    DBusPendingCall* pending = NULL;
     DBusMessage* msg = dbus_message_new_method_call(CAN_SERVER_SERVICE_NAME,
                                        CAN_SERVER_OBJECT_PATH,
                                        CAN_SERVER_INTERFACE,
@@ -166,7 +166,6 @@ void dbusMethodCallSync(const char *methodName) {
     }
     
     /* send message and get a handle for a reply */
-    DBusPendingCall* pending = NULL;
     if (!dbus_connection_send_with_reply (m_conn, msg, &pending, -1)) {
         fprintf(stderr, "Out Of Memory!\n");
         /* free message */

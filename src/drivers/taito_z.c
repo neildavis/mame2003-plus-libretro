@@ -1336,6 +1336,7 @@ static WRITE16_HANDLER( chasehq_time_w )
 		output_set_value(CHQ_TIME_NAME, time);
 		chasehq_time_last = time;
 #ifdef REALDASH
+	{
 		/* Calculate fuel % from time remaining since last reset */
 		UINT16 fuel_percent = 0;
 		if (chasehq_time_max > 0) {
@@ -1345,6 +1346,7 @@ static WRITE16_HANDLER( chasehq_time_w )
 			fuel_percent = 100;
 		}
 		RealDashCanClientUpdateFuel(fuel_percent);
+	}
 #endif
 	}
 }
@@ -1386,8 +1388,10 @@ static WRITE16_HANDLER( chasehq_speed_w )
 		output_set_value(CHQ_SPEED_KPH_NAME, chasehq_speed_kph_next);
 		chasehq_speed_last = chasehq_speed_kph_next;
 #ifdef REALDASH
+	{
 		UINT32 speedMPH = chasehq_speed_kph_next * 6214 / 10000;
 		RealDashCanClientUpdateSpeed((UINT16)speedMPH);
+	}
 #endif
 	}
 }
@@ -1488,11 +1492,11 @@ static WRITE16_HANDLER( chasehq_start_button_w )
 		- 0x1f -> 0x1d -> 0x01: 'press start button' text appears
 	*/
 	if (ACCESSING_MSB) {
+		data16_t lsb = data & 0xff;
 		data16_t msb = (data & 0xff00) >> 8;
 		if (msb != 0x01) {
 			return;	// not on start screen
 		}
-		data16_t lsb = data & 0xff;
 		if (lsb != chasehq_start_button_last) {
 			if (0x1f == chasehq_start_button_last) {
 				/* We are at a start button on/off point */
