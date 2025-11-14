@@ -516,10 +516,10 @@ WRITE_HANDLER( turbo_ram_w ) {
 
 	switch (addr) {
 		case 0xf200:
+			struct InputPort *coin_port = &Machine->input_ports[8];
 			/* 0xf200 contains the number of credits */
 			output_set_value(OUTPUT_TURBO_CREDITS_NAME, data);
 			/* Simulate 'Free play' by setting input for coin whenever credits reaches 0 */
-			struct InputPort *coin_port = &Machine->input_ports[8];
 			if (0 == data) {
 				/* No credits :( Let's conjure up a coin ;) */
 				coin_port->default_value = IP_ACTIVE_HIGH;

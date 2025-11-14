@@ -1488,11 +1488,11 @@ static WRITE16_HANDLER( chasehq_start_button_w )
 		- 0x1f -> 0x1d -> 0x01: 'press start button' text appears
 	*/
 	if (ACCESSING_MSB) {
+		data16_t lsb = data & 0xff;
 		data16_t msb = (data & 0xff00) >> 8;
 		if (msb != 0x01) {
 			return;	// not on start screen
 		}
-		data16_t lsb = data & 0xff;
 		if (lsb != chasehq_start_button_last) {
 			if (0x1f == chasehq_start_button_last) {
 				/* We are at a start button on/off point */
