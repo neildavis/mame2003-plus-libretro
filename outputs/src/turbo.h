@@ -1,6 +1,8 @@
 #ifndef __TURBO_H__
 #define __TURBO_H__
 
+#ifdef ROM_TURBO
+
 #include <memory>
 #include <tm1637.h>
 #include <tm1637_sayer.h>
@@ -51,4 +53,5 @@ private:
     bool m_start_mode_active;
 };
 
+#endif // ROM_TURBO
 #endif // __TURBO_H__

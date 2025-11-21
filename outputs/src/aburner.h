@@ -1,6 +1,8 @@
 #ifndef __AFTERBURNER_H__
 #define __AFTERBURNER_H__
 
+#ifdef ROM_ABURNER2
+
 #include <memory>
 #include <udd.h>
 #include "output_handler_base.h"
@@ -27,5 +29,5 @@ private:
     std::unique_ptr<DisplayST7789R> m_display;
 };
 
-
+#endif
 #endif // __AFTERBURNER_H__
