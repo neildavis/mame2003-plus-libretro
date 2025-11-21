@@ -264,6 +264,30 @@ else ifeq ($(platform), rpi4_64)
 	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
 	CPU_ARCH := arm64
 
+# Raspberry Pi 5
+else ifeq ($(platform), rpi5)
+	TARGET = $(TARGET_NAME)_libretro.so
+	fpic = -fPIC
+	CFLAGS += $(fpic)
+	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
+	PLATCFLAGS += -marm -mcpu=cortex-a76 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+	PLATCFLAGS += -fomit-frame-pointer -ffast-math
+	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
+	CPU_ARCH := arm
+	ARM = 1
+	HAVE_ARMv6 = 1
+
+# Raspberry Pi 5 (AArch64)
+else ifeq ($(platform), rpi5_64)
+	TARGET = $(TARGET_NAME)_libretro.so
+	fpic = -fPIC
+	CFLAGS += $(fpic)
+	LDFLAGS += $(fpic) -shared -Wl,--version-script=link.T
+	PLATCFLAGS += -mcpu=cortex-a76 -mtune=cortex-a76
+	PLATCFLAGS += -fomit-frame-pointer -ffast-math
+	CXXFLAGS = $(CFLAGS) -fno-rtti -fno-exceptions
+	CPU_ARCH := arm64
+
 # Classic Platforms - NESC, SNESC, C64 mini
 else ifeq ($(platform), classic_armv7_a7)
 	TARGET := $(TARGET_NAME)_libretro.so
