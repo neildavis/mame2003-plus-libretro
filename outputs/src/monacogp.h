@@ -1,6 +1,8 @@
 #ifndef ___MONACOGP_H__
 #define ___MONACOGP_H__
 
+#ifdef ROM_MONACOGP
+
 #include <memory>
 #include <tm1637.h>
 #include <tm1637_sayer.h>
@@ -23,4 +25,5 @@ private:
     bool m_score_visible;
 };
 
+#endif // ROM_MONACOGP
 #endif // ___MONACOGP_H__

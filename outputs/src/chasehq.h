@@ -1,6 +1,8 @@
 #ifndef __CHASEHQ_H__
 #define __CHASEHQ_H__
 
+#ifdef ROM_CHASEHQ
+
 #include <memory>
 #include <udd.h>
 #include <tm1637.h>
@@ -35,4 +37,5 @@ private:
     std::shared_ptr<Device> m_pTM1637;
 };
 
+#endif // ROM_CHASEHQ
 #endif // __CHASEHQ_H__

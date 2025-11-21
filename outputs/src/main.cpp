@@ -59,25 +59,43 @@ void main_event_loop() {
                 fprintf(stdout, "%s: T%ld.%03d Read output %s=%d for machine '%s'\n", proc_name, time_now.time, time_now.millitm, output_name, output_value, machine_name);
                 if (!pOutputHandler && 0 == strcmp(OUTPUTS_INIT_NAME, output_name)) {
                     // Initialize output handler
+#ifdef ROM_ABURNER2
                     if (0 == strcmp(machine_name, "aburner")) {
                         /* After Burner */
-                        fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
+                        fprintf(stdout, "%s: Initializing new instance of AfterBurnerOutputHandler\n", proc_name);
                         pOutputHandler.reset(new AfterBurnerOutputHandler());
-                    } else if (0 == strcmp(machine_name, "turbo")) {
-                        fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new TurboOutputHandler());
-                    } else if (0 == strcmp(machine_name, "monacogp")) {
-                        fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new MonacoGpOutputHandler());
-                    } else if (0 == strcmp(machine_name, "chasehq")) {
-                        fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new ChaseHqOutputHandler());
-                    }
-                    if (pOutputHandler) {
                         pOutputHandler->init();
                         continue;                
                     }
+#endif
+#ifdef ROM_TURBO
+                    if (0 == strcmp(machine_name, "turbo")) {
+                        fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new TurboOutputHandler());
+                        pOutputHandler->init();
+                        continue;                
+                    }
+#endif
+#ifdef ROM_MONACOGP
+                    if (0 == strcmp(machine_name, "monacogp")) {
+                        fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new MonacoGpOutputHandler());
+                        pOutputHandler->init();
+                        continue;                
+                    } 
+#endif
+#ifdef ROM_CHASEHQ
+                    if (0 == strcmp(machine_name, "chasehq")) {
+                        fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new ChaseHqOutputHandler());
+                        pOutputHandler->init();
+                        continue;                
+                    }
+#endif
+                    fprintf(stdout, "%s: No output handler available for machine '%s'\n", proc_name, machine_name);
+                    continue;
                 }
+
                 if (pOutputHandler) {
                     pOutputHandler->handle_output(output_name, output_value);
                 }
