@@ -40,13 +40,14 @@ SOURCES_C := \
 USE_WIRINGPI ?= 0
 USE_UDDRPI  ?= 0
 USE_GPIOD ?= 0
+USE_PIGPIOD ?= 0
 USE_TM1637PI ?= 0
 
 # Target ROM mapping to required features
 ROMS ?= none
 # All supported ROMs
 ifneq (,$(findstring all,$(ROMS)))
-	override ROMS := aburner2 turbo monacogp chasehq
+	override ROMS := aburner2 turbo monacogp chasehq shangon
 endif
 
 # After Burner 2
@@ -80,6 +81,14 @@ ifneq (,$(findstring chasehq,$(ROMS)))
 	USE_UDDRPI := 1
 	USE_TM1637PI := 1
 endif
+# Super Hang-On
+ifneq (,$(findstring shangon,$(ROMS)))
+	SOURCES_C += $(CORE_DIR)/shangon.cpp
+	CPPFLAGS += -DROM_SHANGON
+	USE_WIRINGPI := 1
+	USE_PIGPIOD := 1
+	USE_TM1637PI := 1
+endif
 
 ifeq ($(USE_GPIOD), 1)
 	LIBS += -lgpiodcxx
@@ -93,6 +102,9 @@ ifeq ($(USE_UDDRPI), 1)
 endif
 ifeq ($(USE_TM1637PI), 1)
 	LIBS += -lTM1637Pi
+endif
+ifeq ($(USE_PIGPIOD), 1)
+	LIBS += -lpigpiod_if2
 endif
 
 OBJECTS := $(SOURCES_C:.cpp=.o)
@@ -110,6 +122,7 @@ all: build
 
 summary:
 	@echo Target ROMs: $(ROMS)
+	@echo SOURCES_C: $(SOURCES_C)
 ifeq ($(USE_WIRINGPI), 1)
 	@echo Using WiringPi
 endif

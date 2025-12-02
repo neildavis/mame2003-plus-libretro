@@ -28,13 +28,13 @@
             ]
         },
         {
-            "name": "(gdb) RetroPie chasehq",
+            "name": "(gdb) RetroPie ROM",
             "type": "cppdbg",
             "request": "launch",
             "program": "/opt/retropie/emulators/retroarch/bin/retroarch",
             "args": ["-L", "/opt/retropie/libretrocores/lr-mame2003-plus/mame2003_plus_libretro.so",
                      "--config", "/opt/retropie/configs/mame-libretro/retroarch.cfg",
-                     "/home/pi/RetroPie/roms/mame-libretro/chasehq.zip",
+                     "/home/pi/RetroPie/roms/mame-libretro/shangonb.zip",
                      "--appendconfig", "/dev/shm/retroarch.cfg"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -55,7 +55,7 @@
             ]
         },
         {
-            "name": "(gdb) RetroArch shangonb",
+            "name": "(gdb) RetroArch ROM",
             "type": "cppdbg",
             "request": "launch",
             "program": "/usr/bin/retroarch",

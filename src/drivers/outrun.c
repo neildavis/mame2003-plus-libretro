@@ -22,6 +22,8 @@
 */
 
 #include "driver.h"
+#include "output.h"
+#include "output-def.h"
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
@@ -79,23 +81,37 @@ static void set_bg2_page( int data ){
 as digital as well to see what works better */
 #define HANGON_DIGITAL_CONTROLS
 
+/* Accel */
 static READ16_HANDLER( ho_io_x_r ){ return input_port_0_r( offset ); }
-#ifdef HANGON_DIGITAL_CONTROLS
+
+/* Brake */
+static bool sho_brake = true; /* to force intiial write to false */
+static const data16_t sho_brake_threshold = 0x0010;	/* tune this to adjust analog brake sensitivity */
 static READ16_HANDLER( ho_io_y_r ){
+	data16_t ret = 0x0000;
+	bool brake = false;
+#ifdef HANGON_DIGITAL_CONTROLS
 	int data = input_port_1_r( offset );
 
 	switch(data & 3)
 	{
-		case 3:	return 0xffff;	/* both */
-		case 2:	return 0x00ff;  /* brake */
-		case 1:	return 0xff00;  /* accel */
-		case 0:	return 0x0000;  /* neither */
+		case 3:	ret = 0xffff;	break; /* both */
+		case 2:	ret = 0x00ff;	break; /* brake */
+		case 1:	ret = 0xff00;	break; /* accel */
+		default:				break; /* neither */
 	}
-	return 0x0000;
+#else /* Hang-On Analog Controls*/
+	ret = (input_port_1_r( offset ) << 8) | input_port_5_r( offset );
+#endif /* HANGON_DIGITAL_CONTROLS */
+
+	brake = ((ret & 0x00ff) > sho_brake_threshold);
+	if (brake != sho_brake) {
+		/* printf("shangon: Brake: %s\n", brake ? "ON" : "OFF"); */
+		output_set_value(SHO_BRAKE_LIGHT_NAME, brake ? 1 : 0);
+		sho_brake = brake;
+	}
+	return ret;
 }
-#else
-static READ16_HANDLER( ho_io_y_r ){ return (input_port_1_r( offset ) << 8) + input_port_5_r( offset ); }
-#endif
 
 /*	outrun: generate_gr_screen(0x200,0x800,0,0,3,0x8000); */
 static void generate_gr_screen(
@@ -1421,7 +1437,15 @@ static WRITE16_HANDLER( shared_ram2_w ){
 	COMBINE_DATA(&shared_ram2[offset]);
 }
 
+static READ16_HANDLER( sho_text_insert_coins_r ) {
+	data16_t ret = 0;
+	static const char *const sho_text_insert_coins_repl = "\3  PUSH START";
+	return (sho_text_insert_coins_repl[offset << 1] << 8) | sho_text_insert_coins_repl[(offset << 1) + 1];
+}
+
+
 static MEMORY_READ16_START( shangon_readmem )
+    { 0x0060ce, 0x0060db, sho_text_insert_coins_r }, /* text to insert coins */
     { 0x000000, 0x03ffff, MRA16_ROM },
 	{ 0x20c640, 0x20c647, sound_shared_ram_r },
 	{ 0x20c000, 0x20ffff, SYS16_MRA16_EXTRAM2 },
@@ -1439,9 +1463,260 @@ static MEMORY_READ16_START( shangon_readmem )
 	{ 0xe030fa, 0xe030fb, ho_io_y_r },
 MEMORY_END
 
+/* SHO Service port/buttons */
+static const offs_t sho_credits_offset = (0x20c052 - 0x20c000) / 2;
+static data16_t sho_credits_val = 0xffff; /* any invalid value so first write is always triggered */
+static data16_t sho_buttons_val = 0xffff; /* any invalid value so first write is always triggered */
+static WRITE16_HANDLER( sho_credits_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_credits_offset]);
+
+	/*
+		MSB=Credits 0-9, 
+		LSB=NOT(IPT2/input_port_2_word_r)
+	*/
+
+	if (ACCESSING_MSB16) { /* Credits */
+		data16_t credits = (data >> 8) & 0xff;
+		if (credits != sho_credits_val) {
+			/* Credits changed */
+			output_set_value(SHO_CREDITS_NAME, credits);
+			sho_credits_val = credits;
+		}
+	} else { /* Buttons */
+		data16_t buttons = data & 0xff;
+		/* Check if Turbo button state changed*/
+		/*
+		if ((sho_buttons_val ^ buttons) & 0x20) { 
+			printf("shangon: Turbo Button %s\n", (buttons & 0x20) ? "Pressed" : "Released");
+		} 
+		*/
+		/* Check if Start button state changed*/
+		if ((sho_buttons_val ^ buttons) & 0x10) { 
+			/* Start button state changed*/
+			struct InputPort *ip;
+
+			/* Code to find the coin input port manually. Reliable but inneficient */
+			/*
+			ip = &Machine->input_ports;
+			while (ip->type != IPT_END) {
+				if (ip->type == IPT_COIN1) {
+					break;
+				}
+				ip++;
+			}
+			*/
+			/* hardcoded coin input port from debugging, will need to change if input port definitions are modified */
+			ip = &Machine->input_ports[7]; 
+			/* printf("shangon: Start Button %s\n", (buttons & 0x10) ? "Pressed" : "Released"); */
+
+
+			if (buttons & 0x10 && 0 == sho_credits_val) {
+				/* Start button pressed and zero credits - Simulate coin */
+				ip->default_value = IP_ACTIVE_HIGH;
+				/* printf("shangon: Simulate Coin In!\n"); */
+			} else {
+				/* Start button released - reset coin port */
+				ip->default_value = IP_ACTIVE_LOW;
+			}
+		}
+		sho_buttons_val = buttons;
+	}
+}
+
+/* SHO Start button state */
+static const offs_t sho_start_btn_lamp_offset = (0x20c3be - 0x20c000) / 2;
+static data16_t sho_start_btn_lamp_val = 0xffff; /* any invalid value so first write is always triggered */
+static WRITE16_HANDLER( sho_start_btn_lamp_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_start_btn_lamp_offset]);
+
+	/*
+		LSB=some flags? 3C = text shown (light on), 1E = text hidden (light off)
+	*/
+
+	if (ACCESSING_LSB16 && (data & 0xff) != sho_start_btn_lamp_val) {
+		sho_start_btn_lamp_val = data & 0xff;
+		if (0x3c == sho_start_btn_lamp_val) {
+			/* Start button lamp lit */
+			/* printf("shangon: Start Button Lamp On\n"); */
+		} else if (0x1e == sho_start_btn_lamp_val) {
+			/* Start button lamp off */
+			/* printf("shangon: Start Button Lamp Off\n"); */
+		}
+	}
+}
+/* SHO 'Insert Coins' & 'Push Start Button' frame ctr */
+static const offs_t sho_coin_start_frame_ctr_offset = (0x20c428 - 0x20c000) / 2;
+static WRITE16_HANDLER( sho_coin_start_toggle_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_coin_start_frame_ctr_offset]);
+
+	/*
+		LSB=frame ctr. 00->3C (61 frames !?!)
+		0 === not in use (light off)
+		01->1E == text shown (light on) for 30 frames
+		1F-3C->00 = text hidden (light off) for 31 frames
+		Note: 0x3D is briefly written, but re-written with 0x00 in the same frame so ignored here
+		To avoid too many signals to outputs server, we modify this to 4Hz for the purposes of heartbeat blinking etc
+	*/
+
+	if (ACCESSING_LSB16) {
+		data16_t frame_ctr = data & 0xff;
+		switch (frame_ctr)
+		{
+		case 0x0f:	/* 15 */
+		case 0x1e:	/* 30 */
+		case 0x2d:	/* 45 */
+		case 0x3c:	/* 60 */
+			/*printf("shangon: start_btn frames %04x\n", frame_ctr);*/
+			output_set_value(SHO_START_BTN_NAME, frame_ctr);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static const offs_t sho_stage_bcd_offset = (0x20c42a - 0x20c000) / 2;
+static WRITE16_HANDLER( sho_stage_bcd_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_stage_bcd_offset]);
+
+	/*
+		LSB = stage in BCD format
+	*/
+
+	if (ACCESSING_LSB16) {
+		data16_t stage = data & 0xff;
+		output_set_value(SHO_STAGE_BCD_NAME, stage);
+		/* printf("shangon: stage %02x\n", stage); */
+	}
+}
+
+/* SHO Time */
+static const offs_t sho_time_offset = (0x20c500 - 0x20c000) / 2;
+static data16_t sho_time = 0;
+static WRITE16_HANDLER( sho_time_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_time_offset]);
+	
+	/* 
+		Writing time - used in gameplay, attract, track select, music select
+	*/
+	if (ACCESSING_MSB16) {
+		/* 
+			MSB is BCD time in seconds (0-99)
+			We don't write the output directly when this changes (unless time == 0)
+			We write a 16-bit value (time/frames - MSB/LSB) on frame count in LSB change below
+		*/
+		sho_time = (data >> 8) & 0xff;
+		if (0 == sho_time) {
+			/* 
+				Special case. We get no LSB update immediately after writing MSB=0
+				so we explicitly write an output in this case
+			*/
+			/*printf("shangon: time/frames %04x\n", (sys16_extraram2[sho_time_offset])); */
+			output_set_value(SHO_TIME_NAME, sys16_extraram2[sho_time_offset]);
+		}
+	} else if (ACCESSING_LSB16) {
+		/*
+			LSB is frame count between seconds (0x3C-0x01 DESC 60Hz). Does NOT descend from 0x3C when MSB secs hits 1 -> 0 
+			(i.e immediate game over at 0x003C. Road stops moving, etc - no 'grace last second' to reach CP!)
+			frame count is only active during gameplay/attract. Not track/music select (stays at 0x00/0x3C in these cases)
+			To avoid too many signals to outputs server, we modify this to 4Hz for the purposes of heartbeat blinking etc
+		*/
+		data16_t frame_count = data & 0xff;
+		switch (frame_count)
+		{
+		case 0x0f:	/* 15 */
+		case 0x1e:	/* 30 */
+		case 0x2d:	/* 45 */
+		case 0x3c:	/* 60 */
+			/*printf("shangon: time/frames %04x\n", sys16_extraram2[sho_time_offset]);*/
+			output_set_value(SHO_TIME_NAME, sys16_extraram2[sho_time_offset]);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+/* SHO Speed */
+static const offs_t sho_speed_offset = (0x20c530 - 0x20c000) / 2;
+static data16_t sho_speed_val = 0xffff; /* any invalid speed so first write is always triggered */
+static bool sho_turbo_available = true; /* to force intial write to false */
+static bool sho_turbo_active = true; /* to force intial write to false */
+static WRITE16_HANDLER( sho_speed_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_speed_offset]);
+
+	if (sho_speed_val != data) {
+		/* Writing speed */
+		bool turbo_available = false, turbo_active = false;
+		/* printf("shangon: speed changed: %03x -> %03x\n", sho_speed_val, data); */
+		sho_speed_val = data;
+		output_set_value(SHO_SPEED_NAME, sho_speed_val); /* output speed for SHO speed calculation */
+
+		/* Check for change in turbo available state */
+		turbo_available = (sho_speed_val >= 0x280);
+		if (turbo_available != sho_turbo_available) {
+			sho_turbo_available = turbo_available;
+			/* printf("shangon: Turbo %s!\n", turbo_available ? "Available" : "Unavailable"); */
+			output_set_value(SHO_TURBO_AVAILABLE_NAME, turbo_available ? 1 : 0);
+		}
+
+		/* Check for turbo active if turbo available and IPT_BUTTON3 is pressed */
+		turbo_active = (turbo_available && ((readinputport(2) & 0x20) == 0)); 
+		if (turbo_active != sho_turbo_active) {
+			sho_turbo_active = turbo_active;
+			/* printf("shangon: Turbo %s!\n", turbo_active ? "Activated" : "Deactivated"); */
+			output_set_value(SHO_TURBO_ACTIVE_NAME, turbo_active ? 1 : 0);
+		}
+		return;
+	}
+}
+
+/* SHO start lights */
+static const offs_t sho_start_lights_offset = (0x20f048 - 0x20c000) / 2;
+static WRITE16_HANDLER( sho_start_lights_w )
+{
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_extraram2[sho_start_lights_offset]);
+
+	if (ACCESSING_MSB16) {
+		/* Writing Starting lights state
+			MSB is state (0-4)
+			LSB is frame count between states (0x00 - 0x3B ASC)
+			0 = pre-start
+			1,2,3 = lights in order
+			4 = race started.
+			Reset is odd. May stay as 4 during next attract loop
+		*/
+		data16_t lights_state = (data >> 8) & 0xff;
+		/* printf("shangon: Start lights changed: %x\n", lights_state); */
+		output_set_value(SHO_START_LIGHTS_NAME, lights_state);
+	}
+}
+
 static MEMORY_WRITE16_START( shangon_writemem )
     { 0x000000, 0x03ffff, MWA16_ROM },
 	{ 0x20c640, 0x20c647, sound_shared_ram_w },
+/* ND: SHO write hooks */
+	{ 0x20c052, 0x20c053, sho_credits_w, },
+	/* { 0x20c3be, 0x20c3bf, sho_start_btn_lamp_w, }, */ /* use sho_coin_start_toggle_w instead */
+	{ 0x20c428, 0x20c429, sho_coin_start_toggle_w, },
+	{ 0x20c42a, 0x20c42b, sho_stage_bcd_w },
+	{ 0x20c500, 0x20c501, sho_time_w, },
+	{ 0x20c530, 0x20c531, sho_speed_w, },
+	{ 0x20f048, 0x20f049, sho_start_lights_w, },
+/* ND */
 	{ 0x20c000, 0x20ffff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
 	{ 0x400000, 0x40ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
 	{ 0x410000, 0x410fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
@@ -1536,6 +1811,8 @@ static DRIVER_INIT( shangon ){
 
 static DRIVER_INIT( shangonb ){
 	generate_gr_screen(512,1024,8,0,4,0x8000);
+	output_init("shangonb");
+
 }
 /***************************************************************************/
 

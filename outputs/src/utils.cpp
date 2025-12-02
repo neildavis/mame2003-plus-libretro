@@ -33,3 +33,17 @@ int parseLedOutputName(const char *output_name) {
    }
    return -1;
 }
+
+int bcd16_to_decimal(int data) {
+    /* decode BCD: if high byte is zero prefer low-byte BCD */
+    if (((data & 0xff00) == 0)) {
+        return (((data >> 4) & 0x0f) * 10) + (data & 0x0f);
+    }
+    if ((data & 0xf000) == 0) {
+        return (((data >> 8) & 0x0f) * 100) +
+                        (((data >> 4) & 0x0f) * 10) + (data & 0x0f);
+    }
+    return (((data >> 12) & 0x0f) * 1000) + (((data >> 8) & 0x0f) * 100) +
+                    (((data >> 4) & 0x0f) * 10) + (data & 0x0f);
+}	
+

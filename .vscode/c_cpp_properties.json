@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**"
             ],
-            // "defines": ["ROM_ABURNER2", "ROM_TURBO", "ROM_MONACOGP", "ROM_CHASEHQ"],
+            // "defines": ["ROM_ABURNER2", "ROM_TURBO", "ROM_MONACOGP", "ROM_CHASEHQ", "ROM_SHANGON"],
+            "defines": ["ROM_SHANGON"],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c11",
             "cppStandard": "c++11",

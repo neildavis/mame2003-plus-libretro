@@ -91,4 +91,28 @@
 /* Start Button LED */
 #define CHQ_LED_START 0
 
+/*
+ Super Hang-On Output Values
+*/
+
+/* Stage (BCD) */
+#define SHO_STAGE_BCD_NAME "stg_bcd"
+/* Time Remaining in seconds */
+#define SHO_TIME_NAME "time"
+/* Speed in BCD format */
+#define SHO_SPEED_NAME "kph"
+/* Credits */
+#define SHO_CREDITS_NAME "cred"
+/* Turbo Available (1=yes,0=no) */
+#define SHO_TURBO_AVAILABLE_NAME "trb_av"
+/* Turbo Active (1=yes,0=no) */
+#define SHO_TURBO_ACTIVE_NAME "trb_ac"
+/* Start Button LED */
+#define SHO_START_BTN_NAME "strt_btn"
+/* Start Lights Sequence */
+#define SHO_START_LIGHTS_NAME "strtlghts"
+/* Brake light */
+#define SHO_BRAKE_LIGHT_NAME "brake"
+
+
 #endif /* __OUTPUT_DEF_H__ */

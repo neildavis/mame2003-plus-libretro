@@ -19,6 +19,7 @@
 #include "turbo.h"
 #include "monacogp.h"
 #include "chasehq.h"
+#include "shangon.h"
 
 
 static volatile sig_atomic_t keep_running = 1;
@@ -124,6 +125,14 @@ void main_event_loop() {
                     if (0 == strcmp(machine_name, "chasehq")) {
                         fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
                         pOutputHandler.reset(new ChaseHqOutputHandler());
+                        pOutputHandler->init();
+                        continue;                
+                    }
+#endif
+#ifdef ROM_SHANGON
+                    if (0 == strncmp(machine_name, "shangon", 7)) {
+                        fprintf(stdout, "%s: Initializing new instance of SuperHangOnOutputHandler\n", proc_name);
+                        pOutputHandler.reset(new SuperHangOnOutputHandler());
                         pOutputHandler->init();
                         continue;                
                     }
