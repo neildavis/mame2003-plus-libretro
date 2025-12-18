@@ -32,9 +32,9 @@ static void sig_handler(int _)
 void main_event_loop() {
     FILE *stream = NULL;
     int fd  = -1;
-    char machine_name[OUTPUTS_PIPE_MAX_MACHINE_NAME_SIZE];
-    char output_name[OUTPUTS_PIPE_MAX_OUTPUT_NAME_SIZE];
-    int output_value;
+    char buf[OUTPUTS_PIPE_MAX_BUF_SIZE];
+    char *machine_name = NULL, *output_name = NULL;
+    int output_value = -1;
     
     while (keep_running) {
         /* Open the FIFO pipe for reading */
@@ -49,7 +49,8 @@ void main_event_loop() {
             fprintf(stderr, "%s: Unable to open FIFO pipe stream for reading. errno=%d\n", proc_name, errno);
             exit(errno);
         }
-
+        /* Set non buffering mode (_IONBF) */
+        setvbuf(stream, NULL, _IONBF, 0);
         /* Continually read output commands from the pipe */
         struct timeb time_now;
         struct pollfd pfd;
@@ -77,10 +78,21 @@ void main_event_loop() {
                 fprintf(stdout, "%s: Client hung-up pipe\n", proc_name);
                 break;
             }
-            if (3 == fscanf(stream, "%[^:]:%[^:]:%d:", machine_name, output_name, &output_value)) {
+            if (NULL == fgets(buf, OUTPUTS_PIPE_MAX_BUF_SIZE, stream)) {
+                fprintf(stdout, "%s: Failed to read output line from stream\n", proc_name);
+            }
+            // Tokenize the output line
+            machine_name = strtok(buf, ":");
+            output_name = strtok(NULL, ":");
+            char *output_value_str = strtok(NULL, ":");
+
+            if (machine_name && output_name && output_value_str) {
                 /* We successfully read an output command */
+                output_value = atoi(output_value_str);
+                /*
                 ftime(&time_now);
                 fprintf(stdout, "%s: T%ld.%03d Read output %s=%d for machine '%s'\n", proc_name, time_now.time, time_now.millitm, output_name, output_value, machine_name);
+                */
                 if (!pOutputHandler && 0 == strcmp(OUTPUTS_INIT_NAME, output_name)) {
                     // Initialize output handler
 #ifdef ROM_ABURNER2
