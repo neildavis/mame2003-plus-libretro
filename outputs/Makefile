@@ -85,6 +85,7 @@ ifeq ($(USE_GPIOD), 1)
 	LIBS += -lgpiodcxx
 endif
 ifeq ($(USE_WIRINGPI), 1)
+	SOURCES_C += $(CORE_DIR)/wiringpi_xtra.cpp
 	LIBS += -lwiringPi
 endif
 ifeq ($(USE_UDDRPI), 1)
