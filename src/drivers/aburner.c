@@ -28,6 +28,8 @@ Special thanks to:
 #include "cpu/i8039/i8039.h"
 #include "system16.h"
 
+#include "output-def.h"
+
 /*****************************************************************************/
 /* After Burner I (Japanese Version)
 (c) 1987 SEGA
@@ -563,17 +565,17 @@ static WRITE16_HANDLER( aburner_lamp_w ){
 
 	
 	if (!bit_equal(aburner_lamp, data, 2)) {
-		output_set_lamp_value(2, (data >> 1) & 0x01);	/* altitude warning lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_ALTITUDE_WARNING, (data >> 1) & 0x01);	/* altitude warning lamp */
 	}
 	
 	if (!bit_equal(aburner_lamp, data, 3)) {
-		output_set_led_value(0, (data >> 2) & 0x01);	/* start lamp */
+		output_set_led_value(AFTER_BURNER_LED_START, (data >> 2) & 0x01);	/* start lamp */
 	}
 	if (!bit_equal(aburner_lamp, data, 6)) {
-		output_set_lamp_value(0, (data >> 5) & 0x01);	/* lock on lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_LOCK_ON, (data >> 5) & 0x01);	/* lock on lamp */
 	}
 	if (!bit_equal(aburner_lamp, data, 7)) {
-		output_set_lamp_value(1, (data >> 6) & 0x01);	/* danger lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_DANGER, (data >> 6) & 0x01);	/* danger lamp */
 
 	}
 	COMBINE_DATA( &aburner_lamp );
@@ -711,6 +713,28 @@ static READ16_HANDLER( math1_compare_r ){ /* 0xe8006 */
 	return 0;
 }
 
+static const offs_t aburner_horiz_h_offset = (0x620 - 0x000) / 2;
+static data16_t aburner_horiz_h_val = 0x6666;
+static data16_t aburner_horiz_v_val = 0x6666;
+static WRITE16_HANDLER( aburner_horiz_h_w ){
+	COMBINE_DATA(&sys16_workingram2[aburner_horiz_h_offset + offset]);
+	if (data != aburner_horiz_h_val) {
+		aburner_horiz_h_val = data;
+		//printf("aburner2: horiz: (%hd, %hd)\n", aburner_horiz_h_val, aburner_horiz_v_val);
+		output_set_value(OUTPUT_AFTER_BURNER_HORIZ_H_NAME, data);
+	}
+}
+
+static const offs_t aburner_horiz_v_offset = (0x08c - 0x000) / 2;
+static WRITE16_HANDLER( aburner_horiz_v_w ){
+	COMBINE_DATA(&sys16_workingram2[aburner_horiz_v_offset]);
+	if (data != aburner_horiz_v_val) {
+		aburner_horiz_v_val = data;
+		//printf("aburner2: horiz: (%hd, %hd)\n", aburner_horiz_h_val, aburner_horiz_v_val);
+		output_set_value(OUTPUT_AFTER_BURNER_HORIZ_V_NAME, data);
+	}
+}
+
 static MEMORY_READ16_START( aburner_readmem )
     { 0x000000, 0x07ffff, MRA16_ROM },
 	{ 0x0c0000, 0x0cffff, SYS16_MRA16_TILERAM },			/* 16 tilemaps */
@@ -777,6 +801,8 @@ static MEMORY_WRITE16_START( aburner_writemem )
 	{ 0x140004, 0x140005, aburner_unknown_w },		/* unknown */
 	{ 0x140006, 0x140007, aburner_lamp_w },		/* 0x06 - start lamp, warning lamp */
 	{ 0x200000, 0x27ffff, MWA16_ROM },				/* CPU2 ROM */
+	{ 0x29c620, 0x29c62f, aburner_horiz_h_w},
+	{ 0x29c08c, 0x29c08d, aburner_horiz_v_w},
 	{ 0x29c000, 0x2a3fff, SYS16_MWA16_WORKINGRAM2, &sys16_workingram2 },
 
 	{ 0x2e0000, 0x2e001f, math1_product_w },
@@ -802,6 +828,8 @@ MEMORY_END
 
 static MEMORY_WRITE16_START( aburner_writemem2 )
     { 0x000000, 0x07ffff, MWA16_ROM },
+	{ 0x09c620, 0x09c62f, aburner_horiz_h_w},
+	{ 0x09c08c, 0x09c08d, aburner_horiz_v_w},
 	{ 0x09c000, 0x0a3fff, SYS16_MWA16_WORKINGRAM2_SHARE },
 
 	{ 0x0e0000, 0x0e001f, math1_product_w },

@@ -21,7 +21,10 @@ private:
     void update_lock(int value);
     void update_altitude_warning(int value);
     void update_start_led(int value);
+    void update_horizon_h(int value);
+    void update_horizon_v(int value);
 private:
+    int     m_pi_handle;
     std::unique_ptr<Image> m_bmp_press_start;
     std::unique_ptr<Image> m_bmp_clear_press_start;
     std::unique_ptr<Image> m_bmp_lock;

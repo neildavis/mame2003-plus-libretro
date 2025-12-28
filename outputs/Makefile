@@ -56,6 +56,7 @@ ifneq (,$(findstring aburner2,$(ROMS)))
 	CPPFLAGS += -DROM_ABURNER2
 	USE_WIRINGPI := 1
 	USE_UDDRPI  := 1
+	USE_PIGPIOD := 1
 endif
 # Turbo
 ifneq (,$(findstring turbo,$(ROMS)))
@@ -143,26 +144,30 @@ clean:
 	rm -rf $(CORE_DIR)/*.d
 	rm -rf $(CORE_DIR)/*.o
 
-install: build
+install_res:
+	mkdir -p $(INSTALL_DIR_RES)
+	cp $(RESOURCE_DIR_IMAGES)/*.bmp $(INSTALL_DIR_RES)/
+
+clean_res:
+	rm -rf $(INSTALL_DIR_RES)
+
+install: build install_res
 	mkdir -p $(SYSTEMD_CONFIG_DIR)
 	mkdir -p $(INSTALL_DIR_BIN)
-	mkdir -p $(INSTALL_DIR_RES)
 	cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR_BIN)/
-	cp $(RESOURCE_DIR_IMAGES)/*.bmp $(INSTALL_DIR_RES)/
 	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
 	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
 	systemctl --user enable $(TARGET)
 
-uninstall:
+uninstall: clean_res
 	systemctl --user stop $(TARGET) 2> /dev/null || true
 	killall $(TARGET) 2> /dev/null || true
 	systemctl --user disable $(TARGET) 2> /dev/null || true
 	rm $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) 2> /dev/null || true
-	rm -rf $(INSTALL_DIR_RES)
 	rm $(INSTALL_DIR_BIN)/$(TARGET) 2> /dev/null || true
 
 
 #Non-File Targets
-.PHONY: all build summary install uninstall clean
+.PHONY: all build summary install install_res uninstall clean_res clean
 
 -include $(DEPS)
