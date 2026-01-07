@@ -71,7 +71,7 @@ void RealDashCanClientInit(void) {
 }
 
 /** d'tor */
-void RealDashCanClientDeinit() {
+void RealDashCanClientDeinit(void) {
 #ifdef REALDASH
     dbus_connection_close(m_conn);
     m_conn = NULL;
@@ -80,19 +80,19 @@ void RealDashCanClientDeinit() {
 }
 
 /** Init state getter */
-uint8_t RealDashCanClientIsInitialized() {
+uint8_t RealDashCanClientIsInitialized(void) {
     return m_initialized;
 }
 
 /** Start CAN server */
-void RealDashCanClientStartServer() {
+void RealDashCanClientStartServer(void) {
 #ifdef REALDASH
     dbusMethodCallSync("startServer");
 #endif
 }
 
 /** Stop CAN server */
-void RealDashCanClientStopServer() {
+void RealDashCanClientStopServer(void) {
 #ifdef REALDASH
     dbusMethodCallSync("stopServer");
 #endif
@@ -139,7 +139,7 @@ void RealDashCanClientUpdateGear(uint16_t gear) {
 }
 
 /** Reset everything to default/zero states */
-void RealDashCanClientResetDefaults()
+void RealDashCanClientResetDefaults(void)
 {
 #ifdef REALDASH
     RealDashCanClientUpdateRevs(0);

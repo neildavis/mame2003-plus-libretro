@@ -18,19 +18,19 @@
 extern const uint16_t RD_MAX_REVS_RPM;
 
 /** c'tor */
-void RealDashCanClientInit();
+void RealDashCanClientInit(void);
 
 /** d'tor */
-void RealDashCanClientDeinit();
+void RealDashCanClientDeinit(void);
 
 /** Init state getter */
-uint8_t RealDashCanClientIsInitialized();
+uint8_t RealDashCanClientIsInitialized(void);
 
 /** Start CAN server */
-void RealDashCanClientStartServer();
+void RealDashCanClientStartServer(void);
 
 /** Stop CAN server */
-void RealDashCanClientStopServer();
+void RealDashCanClientStopServer(void);
 
 /** Update Rev Counter RPM */
 void RealDashCanClientUpdateRevs(uint16_t revsRpm);
@@ -45,6 +45,6 @@ void RealDashCanClientUpdateFuel(uint16_t fuelPercent);
 void RealDashCanClientUpdateGear(uint16_t gear);
 
 /** Reset everything to default/zero states */
-void RealDashCanClientResetDefaults();
+void RealDashCanClientResetDefaults(void);
 
 #endif /* realdashclient_h */
