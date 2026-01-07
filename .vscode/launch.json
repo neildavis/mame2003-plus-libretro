@@ -60,7 +60,7 @@
             "request": "launch",
             "program": "/usr/bin/retroarch",
             "args": ["-L", "${workspaceFolder}/mame2003_plus_libretro.so",
-                     "${HOME}/roms/mame/0.78/shangonb.zip",
+                     "${env:HOME}/roms/mame/0.78/shangonb.zip",
                     ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
