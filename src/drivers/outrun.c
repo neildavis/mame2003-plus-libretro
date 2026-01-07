@@ -61,6 +61,31 @@ static void set_bg_page1( int data ){
 	sys16_bg_page[2] = data&0xf;
 }
 
+/*
+	ND: 4k of masking data to apply to sys16_textram
+	See Section 7: 'Text layer and text RAM'
+	https://jammarcade.net/images/2024/04/s16b.txt
+*/
+static data16_t sys16_textram_mask_map[] = { [0 ... 0x800] = 0xffff };
+
+static WRITE16_HANDLER( sys16_textram_shim_w )
+{
+	/* Mask data from map and write to sys16_textram */
+	data16_t mask_data = sys16_textram_mask_map[offset];
+	if (0xffff == mask_data) {
+		/* No change */
+		sys16_textram_w(offset, data, mem_mask);	
+	} else {
+		/* Replace data with mask */
+		sys16_textram_w(offset, mask_data, mem_mask);	
+	}
+}
+
+/* 
+	Calculate offset into sys16_textram_mask_map based on x, y position
+*/
+#define sys16_textram_translate_offset(x, y) (x + (y << 6))
+
 #if 0
 static void set_fg2_page( int data ){
 	sys16_fg2_page[0] = data>>12;
@@ -1438,7 +1463,6 @@ static WRITE16_HANDLER( shared_ram2_w ){
 }
 
 static READ16_HANDLER( sho_text_insert_coins_r ) {
-	data16_t ret = 0;
 	static const char *const sho_text_insert_coins_repl = "\3  PUSH START";
 	return (sho_text_insert_coins_repl[offset << 1] << 8) | sho_text_insert_coins_repl[(offset << 1) + 1];
 }
@@ -1463,6 +1487,17 @@ static MEMORY_READ16_START( shangon_readmem )
 	{ 0xe030fa, 0xe030fb, ho_io_y_r },
 MEMORY_END
 
+#define SHO_HIDE_HUD
+static void sho_mask_hud_textram_elements(bool mask) {
+	int masked_val = 0xffff; /* by default do not mask */
+	static const offs_t speed_offst = sys16_textram_translate_offset(49,4);
+	static const offs_t speed_len 	= 11 << 1; /* "SPEED xxxKM" == 11 chars == 16 bytes in textram*/
+#ifdef SHO_HIDE_HUD
+	masked_val = mask? 0 : 0xffff;
+#endif
+ 	memset(&sys16_textram_mask_map[speed_offst], masked_val, speed_len); /* Hide Speed in HUD */
+}
+
 /* SHO Service port/buttons */
 static const offs_t sho_credits_offset = (0x20c052 - 0x20c000) / 2;
 static data16_t sho_credits_val = 0xffff; /* any invalid value so first write is always triggered */
@@ -1481,6 +1516,10 @@ static WRITE16_HANDLER( sho_credits_w )
 		data16_t credits = (data >> 8) & 0xff;
 		if (credits != sho_credits_val) {
 			/* Credits changed */
+			if ((sho_credits_val - 1) == credits) {
+				/* Credit used - game started*/
+				sho_mask_hud_textram_elements(true);
+			}
 			output_set_value(SHO_CREDITS_NAME, credits);
 			sho_credits_val = credits;
 		}
@@ -1622,6 +1661,7 @@ static WRITE16_HANDLER( sho_time_w )
 				so we explicitly write an output in this case
 			*/
 			/*printf("shangon: time/frames %04x\n", (sys16_extraram2[sho_time_offset])); */
+			sho_mask_hud_textram_elements(false); /* Revert: Hide Speed text in HUD */
 			output_set_value(SHO_TIME_NAME, sys16_extraram2[sho_time_offset]);
 		}
 	} else if (ACCESSING_LSB16) {
@@ -1719,7 +1759,7 @@ static MEMORY_WRITE16_START( shangon_writemem )
 /* ND */
 	{ 0x20c000, 0x20ffff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
 	{ 0x400000, 0x40ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
-	{ 0x410000, 0x410fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
+	{ 0x410000, 0x410fff, sys16_textram_shim_w, &sys16_textram }, /* ND: replaces SYS16_MWA16_TEXTRAM */
 	{ 0x600000, 0x600fff, SYS16_MWA16_SPRITERAM, &sys16_spriteram },
 	{ 0xa00000, 0xa00fff, SYS16_MWA16_PALETTERAM, &paletteram16 },
 	{ 0xc68000, 0xc68fff, shared_ram_w, &shared_ram },
