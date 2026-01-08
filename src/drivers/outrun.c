@@ -1462,14 +1462,7 @@ static WRITE16_HANDLER( shared_ram2_w ){
 	COMBINE_DATA(&shared_ram2[offset]);
 }
 
-static READ16_HANDLER( sho_text_insert_coins_r ) {
-	static const char *const sho_text_insert_coins_repl = "\3  PUSH START";
-	return (sho_text_insert_coins_repl[offset << 1] << 8) | sho_text_insert_coins_repl[(offset << 1) + 1];
-}
-
-
 static MEMORY_READ16_START( shangon_readmem )
-    { 0x0060ce, 0x0060db, sho_text_insert_coins_r }, /* text to insert coins */
     { 0x000000, 0x03ffff, MRA16_ROM },
 	{ 0x20c640, 0x20c647, sound_shared_ram_r },
 	{ 0x20c000, 0x20ffff, SYS16_MRA16_EXTRAM2 },
@@ -1849,10 +1842,20 @@ static DRIVER_INIT( shangon ){
 	sys16_patch_z80code( 0x1088, 0x01);
 }
 
+static const char *const sho_text_insert_coins_repl = "\3  PUSH START";
+
 static DRIVER_INIT( shangonb ){
 	generate_gr_screen(512,1024,8,0,4,0x8000);
 	output_init("shangonb");
 
+	/* **************** *
+	 * ND: ROM patching *
+	 * **************** */
+	
+	/* 0x0060ce: "Insert Coins" -> "Push Start" */
+	for (UINT16 *p = (UINT16*)(&(memory_region(REGION_CPU1)[0x60ce])), i = 0; i <= strlen(sho_text_insert_coins_repl) ; i += 2 ) {
+		*p++ = (sho_text_insert_coins_repl[i] << 8) | sho_text_insert_coins_repl[i + 1];
+	} 
 }
 /***************************************************************************/
 
