@@ -1896,6 +1896,7 @@ VIDEO_UPDATE( outrun_old )
 
 	tilemap_draw( bitmap,cliprect, text_layer, 0, 0 );
 
+#ifndef REALDASH
 {
 	int x,y,i;
 
@@ -1925,6 +1926,7 @@ VIDEO_UPDATE( outrun_old )
 		x += Machine->uifontwidth;
 	}
 }
+#endif
 }
 
 

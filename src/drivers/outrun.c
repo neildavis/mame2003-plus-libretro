@@ -1078,18 +1078,151 @@ static MACHINE_INIT( toutrun ){
 	cpu_set_halt_line(2, ASSERT_LINE);
 }
 
+void outrun_hud_patch(void)
+{
+	/********************
+	 * ND: ROM Patching *
+	 *******************/
+
+	/* 
+	From Cannonball source on text in ROM encoded with position: in textram
+	See also Section 7 'Text layer and text RAM' in Charles MacDoanld's Sys16 notes:
+	https://jammarcade.net/images/2024/04/s16b.txt
+
+	Format of the input data is as follows:
+
+	Long 1: Destination address to move data to. [e.g. 0x00110D34 which would go to the text ram]
+	Word 1: Number of tiles to draw / counter
+	Byte 1: High byte to apply to every copy, containing priority info [86]
+	Byte 2: Not used
+
+	Byte 3: Second byte to copy containing tile number (low)
+	Byte 4: Third byte to copy containing tile number (low)
+	Byte 5: etc.
+
+	Text layer name table format:
+	
+	MSB          LSB
+	p???cccnnnnnnnnn
+	
+	p : Priority. If 0, sprites with priority level 3 are shown over the text.
+	              If 1, the text layer is shown over sprites regardless of priority.
+	c : Color palette
+	n : Tile index to use
+	? : Unknown
+
+	NOTE: All LONG (32-bit) address patching are done by 2 x WORD (16-bit) operations
+	due to Big endian AND not all addresses are 32-bit aligned
+
+	const definitions below like 'HUD_STRUCT_...' refer to addr of DATA structures in ROM in the format described above
+	const definitions below like 'HUD_ADDR_...' refer to an addr included directly in 68K asm CODE (e.g. 'lea $1100B2,A0')
+
+	*/
+
+	/* SCORE Graphic (2 Lines) */
+	const uint16_t HUD_STRUCT_SCORE1 		= 0xBC3E;	/* 0x001100c6,0004, ... */
+	const uint16_t HUD_STRUCT_SCORE2 		= 0xBC4C;	/* 0x00110146,0004, ... */
+	const uint16_t HUD_ADDR_SCORE_NUM 		= 0x739A; 	/* Addr of textram pos in code */
+
+	/* TIME Graphic (2 Lines) */
+	/* const uint16_t HUD_STRUCT_TIME1 		= 0xBC5A; */ 	/* 0x001100B4,0003, ... */
+	/* const uint16_t HUD_STRUCT_TIME2 		= 0xBC66; */	/* 0x00110134,0003, ... */
+
+	/* KPH (2 Lines) */
+	/* const uint16_t HUD_STRUCT_KPH1 		= 0xBC72; */ 	/* 0x00110CBC,0002, ... */
+	/* const uint16_t HUD_STRUCT_KPH2 		= 0xBC7E; */	/* 0x00110D3C,0002, ... */
+
+	/* STAGE (2 Lines) */
+	const uint16_t HUD_STRUCT_STAGE1_START	= 0xBC8A;	/* 0x00110CEA,0004, ... */
+	const uint16_t HUD_STRUCT_STAGE2_START	= 0xBC98;	/* 0x00110D6A,0004, ... */
+	const uint16_t HUD_STRUCT_STAGE1_CP		= 0x9198;	/* 0x00110CEA,0004, ... */
+	const uint16_t HUD_STRUCT_STAGE2_CP		= 0x91A6;	/* 0x00110D6A,0004, ... */
+
+	/* Number to appear after stage */
+	const uint16_t HUD_STRUCT_STAGEN_START	= 0xBCA6;	/* 0x00110D76,0000, ... */
+	const uint16_t HUD_ADDR_STAGEN_CP		= 0x9036;	/* Addr of textram pos in code */
+
+	/* LAP (2 Lines) */
+	const uint16_t HUD_STRUCT_LAP1 			= 0xBCDA;	/* 0x001100E2,0003, ... */
+	const uint16_t HUD_STRUCT_LAP2 			= 0xBCE6;	/* 0x00110162,0003, ... */
+	const uint16_t HUD_ADDR_LAP_TIME 		= 0x8180;	/* Addr of textram pos in code */
+
+	/* Mini-Map */
+	const uint16_t HUD_ADDR_MINI_MAP 		= 0x8B98;	/* Addr of textram pos in code */
+	
+	/* Get ptr to ROM data in RAM */
+	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+
+	/* This ROM patch only supports outruna & outrunb ROM sets */
+	if (0 == strcmp(Machine->gamedrv->name, "outrun")) {
+		return;
+	}
+	
+	/* 
+		Knock out 'Time' graphic by replacing call to render routine (bsr $c526) with 'nop' instr's (0x4E71) 
+		HUD_STRUCT_TIME1 = 0xBC5A - bsr $c526 is at 0xB47C (2 words)
+		HUD_STRUCT_TIME2 = 0xBC66 - bsr $c526 is at 0xB486 (2 words)
+		SUBR to render time (s) bsr $8216, called at 0x7D1E
+	*/
+	RAM[0xB47C >> 1] = 0x4e71;	RAM[(0xB47C >> 1) + 1] = 0x4e71; 	/* HUD_STRUCT_TIME1 */
+	RAM[0xB486 >> 1] = 0x4e71;	RAM[(0xB486 >> 1) + 1] = 0x4e71;	/* HUD_STRUCT_TIME2 */
+	RAM[0x7D1E >> 1] = 0x4e71;	RAM[(0x7D1E >> 1) + 1] = 0x4e71;	/* draw_time SUBR */
+	/*
+		Knock out Speed 'km/h' graphic by replacing call to render routine (bsr $c526) with 'nop' instr's (0x4E71)
+		Knock out speed digits by replacing call to render routine (bsr $bb72) at 0xBA2A with 2x 'nop' instr's (0x4E71)
+	*/
+	RAM[0xBA34 >> 1] = 0x4e71;	RAM[(0xBA34 >> 1) + 1] = 0x4e71; 	/* HUD_STRUCT_KPH1 */
+	RAM[0xBA3E >> 1] = 0x4e71;	RAM[(0xBA3E >> 1) + 1] = 0x4e71; 	/* HUD_STRUCT_KPH2 */
+	RAM[0xBA2A >> 1] = 0x4e71;	RAM[(0xBA2A >> 1) + 1] = 0x4e71;	/* draw_speed SUBR */
+	/*
+		Knock out the rev counter by replacing 'single' (0x81fe) and 'double' (0x81fd) digit tiles 
+		with 'space' tile (0x8120) in the draw_rev_counter render routine at 0x6b08.
+		We don't knock out the entire bsr $6b08 with 'nop' since the routine also does engine sound!
+	*/
+	RAM[0x6B54 >> 1] = 0x8120;	RAM[0x6B64 >> 1] = 0x8120;	/* Empty tiles for rev counter */
+
+
+	/*
+		Move 'Score'to where 'Time' was (but one space further left)
+	*/
+	RAM[(HUD_STRUCT_SCORE1 >> 1) + 1] 	= 0x00B2;	/* HUD_STRUCT_SCORE1 pos */
+	RAM[(HUD_STRUCT_SCORE2 >> 1) + 1] 	= 0x0132;	/* HUD_STRUCT_SCORE2 pos */
+	RAM[(HUD_ADDR_SCORE_NUM >> 1) + 1] 	= 0x013E;	/* Score pos (HUD_STRUCT_SCORE2 + 0xC)*/
+	/*
+		Move 'Stage' to right of score
+	*/
+	RAM[(HUD_STRUCT_STAGE1_START >> 1) + 1]	= 0x00D0;	/* HUD_STRUCT_STAGE1_START pos (start) */
+	RAM[(HUD_STRUCT_STAGE2_START >> 1) + 1] = 0x0150;	/* HUD_STRUCT_STAGE2_START pos (start) */
+	RAM[(HUD_STRUCT_STAGE1_CP >> 1) + 1] 	= 0x00D0;	/* HUD_STRUCT_STAGE1_CP pos (checkpoint) */
+	RAM[(HUD_STRUCT_STAGE2_CP >> 1) + 1] 	= 0x0150;	/* HUD_STRUCT_STAGE2_CP pos (checkpoint) */
+	RAM[(HUD_STRUCT_STAGEN_START >> 1) + 1] = 0x015C;	/* '1' pos (static @ start HUD_STRUCT_STAGE2_START + 0xC) */
+	/* - patch pos arg for render arg at stage update (long at $9036 - default is 0x00110d6e)*/
+	RAM[(HUD_ADDR_STAGEN_CP >> 1) + 1] 		= 0x0154;	/* Stage NUM (checkpoint HUD_STRUCT_STAGE2_CP + 0x4) */
+	/*
+		Move 'mini-map' to between 'STAGE' number and 'LAP' graphic. textram pos defaults to 0x110cfa @ 0x8B98
+	*/
+	RAM[(HUD_ADDR_MINI_MAP >> 1) + 1] 	= 0x00E0;	/* Mini-Map pos */
+	/*
+		Move 'Lap' to right of mini-map
+	*/
+	RAM[(HUD_STRUCT_LAP1 >> 1) + 1] 	= 0x00E6;	/* HUD_STRUCT_LAP1 pos */
+	RAM[(HUD_STRUCT_LAP2 >> 1) + 1] 	= 0x0166;	/* HUD_STRUCT_LAP2 pos */
+	RAM[(HUD_ADDR_LAP_TIME >> 1) + 1] 	= 0x0170;	/* Lap time pos (HUD_STRUCT_LAP2 + 0xA)*/
+}
+
 static DRIVER_INIT( outrun )
 {
 	sys16_interleave_sprite_data( 0x100000 );
 	generate_gr_screen(512,2048,0,0,3,0x8000);
-
+#ifdef REALDASH
+	outrun_hud_patch();
+#endif
 }
 
 static DRIVER_INIT( toutrun )
 {
 	sys16_interleave_sprite_data( 0x100000 );
 	generate_gr_screen(512,2048,0,0,0,0x8000); /* fixes road 2 */
-
 }
 
 static DRIVER_INIT( outrunb )
@@ -1175,6 +1308,9 @@ static DRIVER_INIT( outrunb )
 			if( (mem[i]&0x60) == 0x20 || (mem[i]&0x60) == 0x40 ) mem[i]^=0x60;
 		}
 	}
+#ifdef REALDASH
+	outrun_hud_patch();
+#endif
 }
 
 /***************************************************************************/
