@@ -515,7 +515,7 @@ WRITE_HANDLER( turbo_ram_w ) {
 	cpu_bankbase[STATIC_RAM][addr] = data;
 
 	switch (addr) {
-		case 0xf200:
+		case 0xf200: {
 			struct InputPort *coin_port = &Machine->input_ports[8];
 			/* 0xf200 contains the number of credits */
 			output_set_value(OUTPUT_TURBO_CREDITS_NAME, data);
@@ -528,6 +528,7 @@ WRITE_HANDLER( turbo_ram_w ) {
 				coin_port->default_value = IP_ACTIVE_LOW;
 			}
 			break;
+		}
 		case 0xf20a:
 			if ((data & 0x1) != (data_prev & 0x1)) {
 				/* 
