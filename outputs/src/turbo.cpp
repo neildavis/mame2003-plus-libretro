@@ -51,7 +51,7 @@ TurboOutputHandler::TurboOutputHandler() :
 TurboOutputHandler::~TurboOutputHandler() {
 }
 
-void TurboOutputHandler::init() {
+void TurboOutputHandler::init(OutputHandlerMode /*mode*/) {
 
     // Setup start button
     wiringPiSetupGpio();
@@ -73,9 +73,8 @@ void TurboOutputHandler::init() {
     // Load BMP images
     char res_path[4096];
     get_resource_path(res_path, sizeof(res_path)/sizeof(char));
-    char logoImagePath[4096];
-    snprintf(logoImagePath, 4096, "%s/nn_206.bmp", res_path);
-    m_logoImage.loadBMP(logoImagePath, 0, 0);
+    std::string logoImagePath = std::string(res_path) + "/nn_206.bmp";
+    m_logoImage.loadBMP(logoImagePath.c_str(), 0, 0);
     // Setup initial state
     reset_state();
  }

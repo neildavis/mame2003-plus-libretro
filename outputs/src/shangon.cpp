@@ -59,7 +59,7 @@ SuperHangOnOutputHandler::SuperHangOnOutputHandler() :
 SuperHangOnOutputHandler::~SuperHangOnOutputHandler() {
 }
 
-void SuperHangOnOutputHandler::init() {
+void SuperHangOnOutputHandler::init(OutputHandlerMode /*mode*/) {
     // Init pigpiod interface
     m_pi_handle = pigpio_start(NULL, NULL);
     if (m_pi_handle < 0) {

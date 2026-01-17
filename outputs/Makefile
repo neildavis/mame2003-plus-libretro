@@ -44,10 +44,19 @@ USE_PIGPIOD ?= 0
 USE_TM1637PI ?= 0
 
 # Target ROM mapping to required features
-ROMS ?= none
+ROMS ?=
 # All supported ROMs
 ifneq (,$(findstring all,$(ROMS)))
 	override ROMS := aburner2 turbo monacogp chasehq shangon
+endif
+
+# Dedicated machine ROM - Output handler is created immediately at start
+BOOT_ROM ?=
+ifneq (,$(BOOT_ROM))
+# Ensure ROMS includes BOOT_ROM
+	ifeq (,$(findstring $(BOOT_ROM),$(ROMS)))
+		override ROMS := $(ROMS) $(BOOT_ROM)
+	endif
 endif
 
 # After Burner 2
@@ -122,6 +131,9 @@ $(TARGET): summary $(OBJECTS)
 all: build
 
 summary:
+ifneq (,$(BOOT_ROM))
+	@echo Boot ROM: $(BOOT_ROM)
+endif
 	@echo Target ROMs: $(ROMS)
 	@echo SOURCES_C: $(SOURCES_C)
 ifeq ($(USE_WIRINGPI), 1)
@@ -156,7 +168,7 @@ install: build install_res
 	mkdir -p $(INSTALL_DIR_BIN)
 	cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR_BIN)/
 	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
-	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
+	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET) $(BOOT_ROM)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
 	systemctl --user enable $(TARGET)
 
 uninstall: clean_res

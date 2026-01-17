@@ -12,12 +12,12 @@
 
 using namespace tm1637;
 
-class TurboOutputHandler : public MOutputHandler {
+class TurboOutputHandler : public OutputHandlerBase {
 public:
     TurboOutputHandler();
-    // MOutputHandler overrides
+    // OutputHandlerBase overrides
     virtual ~TurboOutputHandler() override;
-    virtual void init() override;
+    virtual void init(OutputHandlerMode mode) override;
     virtual void deinit() override;
     virtual void handle_output(const char *name, int value) override;
 private:

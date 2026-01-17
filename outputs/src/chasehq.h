@@ -12,11 +12,11 @@
 using namespace udd;
 using namespace tm1637;
 
-class ChaseHqOutputHandler : public MOutputHandler {
+class ChaseHqOutputHandler : public OutputHandlerBase {
 public:
-    // MOutputHandler overrides
+    // OutputHandlerBase overrides
     virtual ~ChaseHqOutputHandler() override;
-    virtual void init() override;
+    virtual void init(OutputHandlerMode mode) override;
     virtual void deinit() override;
     virtual void handle_output(const char *name, int value) override;
 

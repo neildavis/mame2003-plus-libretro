@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <string>
 
 #include <pigpiod_if2.h>
 #include <wiringPi.h>
@@ -40,6 +41,10 @@ static const int kDisplayWidth = 240;
 static const int kDisplayHeight = 320;
 static const Rotation kDisplayRotation = DEGREE_90;
 
+// Splash Screen durations
+static const int kSplashScreenDuration = 5;    // seconds
+static const int kTitleScreenDuration  = 5;    // seconds
+
 // Colors
 Color SEGA_BLUE = Color(0, 96, 168);
 // Positions to place images
@@ -50,10 +55,16 @@ Point point_start_br = Point(289, 178);
 Point point_lock_tl = Point(20, 68);
 Point point_lock_br = Point(299, 171);
 
+/******************************************************************************
+*
+* OutputHandlerBase virtual override methods
+*
+******************************************************************************/
+
 AfterBurnerOutputHandler::~AfterBurnerOutputHandler() {
 }
 
-void AfterBurnerOutputHandler::init() {
+void AfterBurnerOutputHandler::init(OutputHandlerMode mode) {
     // Init pigpiod interface
     m_pi_handle = pigpio_start(NULL, NULL);
     if (m_pi_handle < 0) {
@@ -73,7 +84,7 @@ void AfterBurnerOutputHandler::init() {
 
 	wiringPiSetupGpio();  // use BCM pin numbers
     m_display->openDisplay(displayConfig);
-    m_display->clearScreen(SEGA_BLUE);
+    m_display->clearScreen(BLACK);
 
     // Setup LEDs
 	pinMode(PIN_LAMP_DANGER, OUTPUT);
@@ -83,18 +94,19 @@ void AfterBurnerOutputHandler::init() {
     set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_H_SERVO, SERVO_HORIZ_PWM_MID);
     set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_V_SERVO, SERVO_VERT_PWM_MID);
 
-    // Images
-    m_bmp_press_start.reset(new Image(260, 115, BLACK));
-    m_bmp_clear_press_start.reset(new Image(260, 115, BLACK));
-    m_bmp_lock.reset(new Image(280, 104, BLACK));
-    m_bmp_clear_lock.reset(new Image(280, 104, BLACK));
-    char res_path[4096];
-    get_resource_path(res_path, sizeof(res_path)/sizeof(char));
-    char path[4096];
-    snprintf(path, 4096, "%s/lock.bmp", res_path);
-    m_bmp_lock->loadBMP(path, 0, 0);
-    snprintf(path, 4096, "%s/startbut.bmp", res_path);
-    m_bmp_press_start->loadBMP(path, 0, 0);
+    // Images - only needed in 'Game' mode
+    if (OutputHandlerModeGame == mode) {
+        m_bmp_press_start.reset(new Image(260, 115, BLACK));
+        m_bmp_clear_press_start.reset(new Image(260, 115, BLACK));
+        m_bmp_lock.reset(new Image(280, 104, BLACK));
+        m_bmp_clear_lock.reset(new Image(280, 104, BLACK));
+        char res_path[4096];
+        get_resource_path(res_path, sizeof(res_path)/sizeof(char));
+        std::string path = std::string(res_path) + "/lock.bmp";
+        m_bmp_lock->loadBMP(path.c_str(), 0, 0);
+        path = std::string(res_path) + "/startbut.bmp";
+        m_bmp_press_start->loadBMP(path.c_str(), 0, 0);
+    }
 }
 
 void AfterBurnerOutputHandler::deinit() {
@@ -113,7 +125,7 @@ void AfterBurnerOutputHandler::deinit() {
     m_bmp_clear_press_start.reset();
     m_bmp_lock.reset();
     m_bmp_clear_lock.reset();
-    m_display.reset();
+    m_display.reset(); // Closes SPI via udd::~Display()
 }
 
 void AfterBurnerOutputHandler::handle_output(const char *name, int value) {
@@ -151,6 +163,31 @@ void AfterBurnerOutputHandler::handle_output(const char *name, int value) {
     }
 }
 
+void AfterBurnerOutputHandler::do_boot() {
+    /* Show Splash screens */
+    show_splash_screen("splash.bmp");
+    sleep(kSplashScreenDuration);
+    show_splash_screen("title.bmp");
+    sleep(kTitleScreenDuration);
+    m_display->clearScreen(BLACK);
+}
+
+
+/******************************************************************************
+*
+* Private methods
+*
+******************************************************************************/
+
+void AfterBurnerOutputHandler::show_splash_screen(const char *filename) {
+    Image splash = Image(280, 240, SEGA_BLUE);
+    char res_path[4096];
+    get_resource_path(res_path, 4096);
+    std::string path = std::string(res_path) + '/' + filename;
+    splash.loadBMP(path.c_str(), 0, 0);
+    m_display->showImage(splash, point_tl, point_br, kDisplayRotation);
+}
+
 void AfterBurnerOutputHandler::update_danger(int value) {
    digitalWrite(PIN_LAMP_DANGER, value > 0 ? 1 : 0);
 }
@@ -160,7 +197,7 @@ void AfterBurnerOutputHandler::update_lock(int value) {
     m_display->showImage(*image, point_lock_tl, point_lock_br, kDisplayRotation);
 }
 
-void AfterBurnerOutputHandler::update_altitude_warning(int value) {
+void AfterBurnerOutputHandler::update_altitude_warning(int /*value*/) {
      /* Not sure this is used? */
      //printf("%s: After Burner ALTITUDE WARNING %s\n", proc_name, value > 0 ? "ON" : "OFF");
 }

@@ -16,7 +16,7 @@ using namespace tm1637;
 class MonacoGpOutputHandler : public TurboOutputHandler {
 public:
     MonacoGpOutputHandler();
-    // MOutputHandler overrides
+    // OutputHandlerBase overrides
     virtual void handle_output(const char *name, int value) override;
 private:
     void update_score(int score, bool visible);

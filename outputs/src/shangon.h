@@ -13,13 +13,13 @@ namespace tm1637 {
     class Sayer;
 }
 
-class SuperHangOnOutputHandler : public MOutputHandler {
+class SuperHangOnOutputHandler : public OutputHandlerBase {
 public:
     SuperHangOnOutputHandler();
 public:
-    // MOutputHandler overrides
+    // OutputHandlerBase overrides
     virtual ~SuperHangOnOutputHandler() override;
-    virtual void init() override;
+    virtual void init(OutputHandlerMode mode) override;
     virtual void deinit() override;
     virtual void handle_output(const char *name, int value) override;
 

@@ -41,7 +41,7 @@ static const int PIN_TM1637_DIO = 3;
 ChaseHqOutputHandler::~ChaseHqOutputHandler() {
 }
 
-void ChaseHqOutputHandler::init() {
+void ChaseHqOutputHandler::init(OutputHandlerMode /*mode*/) {
     m_turboCount = 0;
     wiringPiSetupGpio();
     sr595Setup(PIN_SR_BASE, PIN_SR_NUM, PIN_SR_DATA, PIN_SR_CLK, PIN_SR_LATCH);
@@ -131,7 +131,7 @@ void ChaseHqOutputHandler::update_turbo_duration(int value) {
     }
 }
 
-void ChaseHqOutputHandler::update_revs(int value) {
+void ChaseHqOutputHandler::update_revs(int /*value*/) {
     // // This could be done more efficiently!
     // int rK = floor(value / 1000.0);
     // for (int led = 0; led < NUM_LEDS_REVS; led++) {

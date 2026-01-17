@@ -1,6 +1,7 @@
 [Unit]
 Description=Libretro-MAME2003-Plus Outputs Server
-After=network.target
+After=network.target pigpiod.service
+Wants=pigpiod.service
 
 [Service]
 ExecStart=%TARGET%

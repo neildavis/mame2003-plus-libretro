@@ -9,14 +9,16 @@
 using namespace udd;
 
 
-class AfterBurnerOutputHandler : public MOutputHandler {
+class AfterBurnerOutputHandler : public OutputHandlerBase {
 public:
-    // MOutputHandler overrides
+    // OutputHandlerBase overrides
     virtual ~AfterBurnerOutputHandler() override;
-    virtual void init() override;
+    virtual void init(OutputHandlerMode mode) override;
     virtual void deinit() override;
     virtual void handle_output(const char *name, int value) override;
+    virtual void do_boot();
 private:
+    void show_splash_screen(const char *filename);
     void update_danger(int value);
     void update_lock(int value);
     void update_altitude_warning(int value);

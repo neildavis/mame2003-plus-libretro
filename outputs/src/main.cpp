@@ -30,7 +30,50 @@ static void sig_handler(int _)
     keep_running = 0;
 }
 
-void main_event_loop() {
+void create_output_handler(std::unique_ptr<OutputHandlerBase>&pOutputHandler, const char* machine_name, OutputHandlerMode mode) {
+    // Deinit any existing handler before we delete it
+    if (pOutputHandler) {
+        pOutputHandler->deinit();
+        pOutputHandler.reset(); // manual reset in case no match to machine_name
+    }
+
+#ifdef ROM_ABURNER2
+    if (0 == strncmp(machine_name, "aburner", 7)) {
+        /* After Burner */
+        fprintf(stdout, "%s: Initializing new instance of AfterBurnerOutputHandler\n", proc_name);
+        pOutputHandler.reset(new AfterBurnerOutputHandler());
+    }
+#endif
+#ifdef ROM_TURBO
+    if (0 == strcmp(machine_name, "turbo")) {
+        fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
+        pOutputHandler.reset(new TurboOutputHandler());
+    }
+#endif
+#ifdef ROM_MONACOGP
+    if (0 == strcmp(machine_name, "monacogp")) {
+        fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
+        pOutputHandler.reset(new MonacoGpOutputHandler());
+    } 
+#endif
+#ifdef ROM_CHASEHQ
+    if (0 == strcmp(machine_name, "chasehq")) {
+        fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
+        pOutputHandler.reset(new ChaseHqOutputHandler());
+    }
+#endif
+#ifdef ROM_SHANGON
+    if (0 == strncmp(machine_name, "shangon", 7)) {
+        fprintf(stdout, "%s: Initializing new instance of SuperHangOnOutputHandler\n", proc_name);
+        pOutputHandler.reset(new SuperHangOnOutputHandler());
+    }
+#endif
+    if (pOutputHandler) {
+        pOutputHandler->init(mode);
+    }
+}
+
+void main_event_loop(std::unique_ptr<OutputHandlerBase>& pOutputHandler) {
     FILE *stream = NULL;
     int fd  = -1;
     char buf[OUTPUTS_PIPE_MAX_BUF_SIZE];
@@ -53,13 +96,12 @@ void main_event_loop() {
         /* Set non buffering mode (_IONBF) */
         setvbuf(stream, NULL, _IONBF, 0);
         /* Continually read output commands from the pipe */
-        struct timeb time_now;
+        //struct timeb time_now;
         struct pollfd pfd;
         pfd.fd = fd;
         pfd.events = POLLIN;
         pfd.revents = 0;
         int poll_ret = 0;
-        std::unique_ptr<MOutputHandler> pOutputHandler;
         while (poll_ret >= 0 && keep_running) {
             poll_ret = poll(&pfd, 1, -1);
             if (poll_ret < 0) {
@@ -94,51 +136,12 @@ void main_event_loop() {
                 ftime(&time_now);
                 fprintf(stdout, "%s: T%ld.%03d Read output %s=%d for machine '%s'\n", proc_name, time_now.time, time_now.millitm, output_name, output_value, machine_name);
                 */
-                if (!pOutputHandler && 0 == strcmp(OUTPUTS_INIT_NAME, output_name)) {
-                    // Initialize output handler
-#ifdef ROM_ABURNER2
-                    if (0 == strcmp(machine_name, "aburner")) {
-                        /* After Burner */
-                        fprintf(stdout, "%s: Initializing new instance of AfterBurnerOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new AfterBurnerOutputHandler());
-                        pOutputHandler->init();
-                        continue;                
+                if (0 == strcmp(OUTPUTS_INIT_NAME, output_name)) {
+                    // [Re]Initialize output handler
+                    create_output_handler(pOutputHandler, machine_name, OutputHandlerModeGame);
+                    if (!pOutputHandler) {
+                        fprintf(stdout, "%s: No output handler available for machine '%s'\n", proc_name, machine_name);
                     }
-#endif
-#ifdef ROM_TURBO
-                    if (0 == strcmp(machine_name, "turbo")) {
-                        fprintf(stdout, "%s: Initializing new instance of TurboOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new TurboOutputHandler());
-                        pOutputHandler->init();
-                        continue;                
-                    }
-#endif
-#ifdef ROM_MONACOGP
-                    if (0 == strcmp(machine_name, "monacogp")) {
-                        fprintf(stdout, "%s: Initializing new instance of MonacoGpOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new MonacoGpOutputHandler());
-                        pOutputHandler->init();
-                        continue;                
-                    } 
-#endif
-#ifdef ROM_CHASEHQ
-                    if (0 == strcmp(machine_name, "chasehq")) {
-                        fprintf(stdout, "%s: Initializing new instance of ChaseHqOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new ChaseHqOutputHandler());
-                        pOutputHandler->init();
-                        continue;                
-                    }
-#endif
-#ifdef ROM_SHANGON
-                    if (0 == strncmp(machine_name, "shangon", 7)) {
-                        fprintf(stdout, "%s: Initializing new instance of SuperHangOnOutputHandler\n", proc_name);
-                        pOutputHandler.reset(new SuperHangOnOutputHandler());
-                        pOutputHandler->init();
-                        continue;                
-                    }
-#endif
-                    fprintf(stdout, "%s: No output handler available for machine '%s'\n", proc_name, machine_name);
-                    continue;
                 }
 
                 if (pOutputHandler) {
@@ -174,7 +177,7 @@ void main_event_loop() {
     }
 }
 
-int main(int /*argc*/, char **argv) {
+int main(int argc, char **argv) {
     int err;
     proc_name = argv[0];
 
@@ -190,8 +193,18 @@ int main(int /*argc*/, char **argv) {
         exit(errno);
     }
 
+    /* See if we have a 'Boot ROM to initialize the output handler immediately */
+    std::unique_ptr<OutputHandlerBase> pOutputHandler;
+    if (argc > 1 && strlen(argv[1]) > 0) {
+        fprintf(stdout, "%s: Boot ROM specified: %s\n", argv[0], argv[1]);
+        create_output_handler(pOutputHandler, argv[1], OutputHandlerModeBoot);
+        if (pOutputHandler) {
+            pOutputHandler->do_boot();
+        }
+    }
+
     /* Run the main event loop */
-    main_event_loop();
+    main_event_loop(pOutputHandler);
 
     /* Cleanup FIFO */
     err = unlink(OUTPUTS_PIPE_NAME);
