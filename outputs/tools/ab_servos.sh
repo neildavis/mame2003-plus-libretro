@@ -9,9 +9,9 @@ MID_H=1520
 MAX_H=2250
 RANGE_H=$((MAX_H - MID_H))
 
-# Vertical Constants (Range: 250)
+# Vertical Constants (Range: 350)
 MID_V=1450
-MAX_V=1700
+MAX_V=1800
 RANGE_V=$((MAX_V - MID_V))
 
 # Default values

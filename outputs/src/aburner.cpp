@@ -24,14 +24,14 @@ const int PIN_HORIZ_H_SERVO         = 26;   // BCM
 const int PIN_HORIZ_V_SERVO         = 16;   // BCM
 
 // Artificial Horizon Servo Control
-// - Horiz
+// - Horiz: Range == 730
 const int SERVO_HORIZ_PWM_MIN   = 790;  // Full Left
 const int SERVO_HORIZ_PWM_MID   = 1520; // Mid point (level)
 const int SERVO_HORIZ_PWM_MAX   = 2250; // Full Right
-// - Vert
-const int SERVO_VERT_PWM_MIN   = 1200;  // Full Up
+// - Vert: Range == 350
+const int SERVO_VERT_PWM_MIN   = 1100;  // Full Up
 const int SERVO_VERT_PWM_MID   = 1450; // Mid point
-const int SERVO_VERT_PWM_MAX   = 1700; // Full Down
+const int SERVO_VERT_PWM_MAX   = 1800; // Full Down
 
 static const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
