@@ -21,7 +21,7 @@ private:
     void show_splash_screen(const char *filename);
     void update_danger(int value);
     void update_lock(int value);
-    void update_altitude_warning(int value);
+    void update_force_feedback(int value);
     void update_start_led(int value);
     void update_horizon_h(int value);
     void update_horizon_v(int value);

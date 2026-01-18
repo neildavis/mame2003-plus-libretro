@@ -565,18 +565,20 @@ static WRITE16_HANDLER( aburner_lamp_w ){
 
 	
 	if (!bit_equal(aburner_lamp, data, 2)) {
-		output_set_lamp_value(AFTER_BURNER_LAMP_ALTITUDE_WARNING, (data >> 1) & 0x01);	/* altitude warning lamp */
+		/* danger lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_DANGER, (data >> 1) & 0x01);
 	}
-	
 	if (!bit_equal(aburner_lamp, data, 3)) {
-		output_set_led_value(AFTER_BURNER_LED_START, (data >> 2) & 0x01);	/* start lamp */
+		/* start lamp */
+		output_set_led_value(AFTER_BURNER_LED_START, (data >> 2) & 0x01);
 	}
 	if (!bit_equal(aburner_lamp, data, 6)) {
-		output_set_lamp_value(AFTER_BURNER_LAMP_LOCK_ON, (data >> 5) & 0x01);	/* lock on lamp */
+		/* lock on lamp */
+		output_set_lamp_value(AFTER_BURNER_LAMP_LOCK_ON, (data >> 5) & 0x01);
 	}
 	if (!bit_equal(aburner_lamp, data, 7)) {
-		output_set_lamp_value(AFTER_BURNER_LAMP_DANGER, (data >> 6) & 0x01);	/* danger lamp */
-
+		/* Force Feedback / Vibration */
+		output_set_lamp_value(AFTER_BURNER_LAMP_FF, (data >> 6) & 0x01);
 	}
 	COMBINE_DATA( &aburner_lamp );
 }

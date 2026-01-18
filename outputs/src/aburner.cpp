@@ -147,9 +147,9 @@ void AfterBurnerOutputHandler::handle_output(const char *name, int value) {
         } else if (AFTER_BURNER_LAMP_DANGER == n) {
             /* After Burner 'Danger' lamp */
             update_danger(value);
-        } else if (AFTER_BURNER_LAMP_ALTITUDE_WARNING == n) {
-            /* After Burner 'Altitude Warning' lamp */
-            update_altitude_warning(value);
+        } else if (AFTER_BURNER_LAMP_FF == n) {
+            /* After Burner Force Feedback Motor */
+            update_force_feedback(value);
         }
         return;
     }
@@ -189,7 +189,7 @@ void AfterBurnerOutputHandler::show_splash_screen(const char *filename) {
 }
 
 void AfterBurnerOutputHandler::update_danger(int value) {
-   digitalWrite(PIN_LAMP_DANGER, value > 0 ? 1 : 0);
+    digitalWrite(PIN_LAMP_DANGER, value > 0 ? 1 : 0);
 }
 
 void AfterBurnerOutputHandler::update_lock(int value) {
@@ -197,9 +197,9 @@ void AfterBurnerOutputHandler::update_lock(int value) {
     m_display->showImage(*image, point_lock_tl, point_lock_br, kDisplayRotation);
 }
 
-void AfterBurnerOutputHandler::update_altitude_warning(int /*value*/) {
-     /* Not sure this is used? */
-     //printf("%s: After Burner ALTITUDE WARNING %s\n", proc_name, value > 0 ? "ON" : "OFF");
+void AfterBurnerOutputHandler::update_force_feedback(int value) {
+    /* For now, until we have a force feedback motor we just light the Danger lamps for a bit more effect */
+    digitalWrite(PIN_LAMP_DANGER, value > 0 ? 1 : 0);
 }
 
 void AfterBurnerOutputHandler::update_start_led(int value) {
