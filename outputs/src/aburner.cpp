@@ -25,13 +25,13 @@ const int PIN_HORIZ_V_SERVO         = 16;   // BCM
 
 // Artificial Horizon Servo Control
 // - Horiz: Range == 730
-const int SERVO_HORIZ_PWM_MIN   = 790;  // Full Left
+const int SERVO_HORIZ_PWM_MIN   = 790;  // Full Right
 const int SERVO_HORIZ_PWM_MID   = 1520; // Mid point (level)
-const int SERVO_HORIZ_PWM_MAX   = 2250; // Full Right
+const int SERVO_HORIZ_PWM_MAX   = 2250; // Full Left
 // - Vert: Range == 350
-const int SERVO_VERT_PWM_MIN   = 1100;  // Full Up
-const int SERVO_VERT_PWM_MID   = 1450; // Mid point
-const int SERVO_VERT_PWM_MAX   = 1800; // Full Down
+const int SERVO_VERT_PWM_MIN   = 1100;  // Full Down
+const int SERVO_VERT_PWM_MID   = 1450;  // Mid point
+const int SERVO_VERT_PWM_MAX   = 1800;  // Full Up
 
 static const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
@@ -41,9 +41,9 @@ static const int kDisplayWidth = 240;
 static const int kDisplayHeight = 320;
 static const Rotation kDisplayRotation = DEGREE_90;
 
-// Splash Screen durations
-static const int kSplashScreenDuration = 5;    // seconds
-static const int kTitleScreenDuration  = 5;    // seconds
+// Boot/Splash Screen durations
+static const int kSplashDurationMicros  = 5000000;  // micro seconds
+static const int kServoWaitMicros       = 333333;   // micro seconds
 
 // Colors
 Color SEGA_BLUE = Color(0, 96, 168);
@@ -164,12 +164,39 @@ void AfterBurnerOutputHandler::handle_output(const char *name, int value) {
 }
 
 void AfterBurnerOutputHandler::do_boot() {
-    /* Show Splash screens */
-    show_splash_screen("splash.bmp");
-    sleep(kSplashScreenDuration);
-    show_splash_screen("title.bmp");
-    sleep(kTitleScreenDuration);
-    m_display->clearScreen(BLACK);
+    show_splash_screen("splash.bmp");   /* Show 'splash' screen */
+    usleep(kServoWaitMicros);           /* Wait for servo centre from init() t=0.33s */
+    digitalWrite(PIN_LAMP_DANGER, 1);   /* Danger lamp ON */
+    /* Move horion full left */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_H_SERVO, SERVO_HORIZ_PWM_MAX);
+    usleep(kServoWaitMicros);           /* Wait for servo t=0.66s */
+    /* Centre servo */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_H_SERVO, SERVO_HORIZ_PWM_MID);
+    usleep(kServoWaitMicros);           /* Wait for servo t=1.00s */
+    /* Move horion full right */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_H_SERVO, SERVO_HORIZ_PWM_MIN);
+    usleep(kServoWaitMicros);           /* Wait for servo t=1.33s */
+    /* Centre servo */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_H_SERVO, SERVO_HORIZ_PWM_MID);
+    usleep(kServoWaitMicros);           /* Wait for servo t=1.66s */
+    /* Move horizon full up */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_V_SERVO, SERVO_VERT_PWM_MAX);
+    usleep(kServoWaitMicros);           /* Wait for servo t=2.00s */
+    /* Centre servo */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_V_SERVO, SERVO_VERT_PWM_MID);
+    usleep(kServoWaitMicros);           /* Wait for servo t=2.33s */
+    /* Move horizon full down */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_V_SERVO, SERVO_VERT_PWM_MIN);
+    usleep(kServoWaitMicros);           /* Wait for servo t=2.66s */
+    /* Centre servo */
+    set_servo_pulsewidth(m_pi_handle, PIN_HORIZ_V_SERVO, SERVO_VERT_PWM_MID);
+    usleep(kServoWaitMicros);           /* Wait for servo t=3.00s */
+    /* Wait to show title screen */
+    usleep(kSplashDurationMicros - (9 * kServoWaitMicros));
+    digitalWrite(PIN_LAMP_DANGER, 0);   /* Danger lamp OFF */
+    show_splash_screen("title.bmp");    /* Show 'title' screen */
+    usleep(kSplashDurationMicros);      /* Wait on 'title' screen */
+    m_display->clearScreen(BLACK);      /* Clear screen ready for 'Lock'/'Press Start' */
 }
 
 
