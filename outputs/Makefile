@@ -23,6 +23,7 @@ INC_DIR		:= inc
 CORE_DIR    := src
 BUILD_DIR	:= build
 CONFIG_DIR	:= config
+TOOLS_DIR	:= tools
 RESOURCE_DIR_IMAGES  := res/images
 SYSTEMD_CONFIG_DIR := $(HOME)/.config/systemd/user
 SYSTEMD_CONFIG_FILE = $(TARGET).service
@@ -160,18 +161,26 @@ install_res:
 	mkdir -p $(INSTALL_DIR_RES)
 	cp $(RESOURCE_DIR_IMAGES)/*.bmp $(INSTALL_DIR_RES)/
 
-clean_res:
-	rm -rf $(INSTALL_DIR_RES)
+uninstall_res:
+	rm -rf $(INSTALL_DIR_RES) 2> /dev/null || true
 
-install: build install_res
+install_tools:
+	mkdir -p $(INSTALL_DIR_BIN)
+	cp $(TOOLS_DIR)/ab_servos.sh $(INSTALL_DIR_BIN)/
+
+uninstall_tools:
+	rm $(INSTALL_DIR_BIN)/ab_servos.sh 2> /dev/null || true
+
+install: build install_res install_tools
 	mkdir -p $(SYSTEMD_CONFIG_DIR)
 	mkdir -p $(INSTALL_DIR_BIN)
 	cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR_BIN)/
 	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
 	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET) $(BOOT_ROM)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
 	systemctl --user enable $(TARGET)
+	systemctl --user start $(TARGET)
 
-uninstall: clean_res
+uninstall: uninstall_res uninstall_tools
 	systemctl --user stop $(TARGET) 2> /dev/null || true
 	killall $(TARGET) 2> /dev/null || true
 	systemctl --user disable $(TARGET) 2> /dev/null || true
@@ -180,6 +189,6 @@ uninstall: clean_res
 
 
 #Non-File Targets
-.PHONY: all build summary install install_res uninstall clean_res clean
+.PHONY: all build summary install install_res uninstall uninstall_res install_tools uninstall_tools clean
 
 -include $(DEPS)
