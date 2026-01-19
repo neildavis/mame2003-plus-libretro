@@ -1652,7 +1652,7 @@ static WRITE16_HANDLER( sho_credits_w )
 
 			/* Code to find the coin input port manually. Reliable but inneficient */
 			/*
-			ip = &Machine->input_ports;
+			ip = &Machine->input_ports[0];
 			while (ip->type != IPT_END) {
 				if (ip->type == IPT_COIN1) {
 					break;
@@ -1661,6 +1661,7 @@ static WRITE16_HANDLER( sho_credits_w )
 			}
 			*/
 			/* hardcoded coin input port from debugging, will need to change if input port definitions are modified */
+			/* Always 7 regardless of HANGON_DIGITAL_CONTROLS from testing */
 			ip = &Machine->input_ports[7]; 
 			/* printf("shangon: Start Button %s\n", (buttons & 0x10) ? "Pressed" : "Released"); */
 
