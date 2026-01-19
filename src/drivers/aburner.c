@@ -949,6 +949,58 @@ static DRIVER_INIT( thndrbdj ){
 	sys16_interleave_sprite_data( 0x200000 );
 }
 
+static void aburner2_rom_patch(void) {
+	/********************
+	 * ND: ROM Patching *
+	 * 
+	 * See notes in outrun_hud_patch() in outrun.c 
+	 * about textram data structs which apply here
+	 * 
+	 *******************/
+
+	/*
+		Change 'INSERT COINS' to 'PUSH START BUTTON
+		in title/attract screens:
+
+		This text is not held in ASCII format.
+		The textram structs use specific consecutive tile ids:
+		0x60-0x6a: (11 tiles) -> 'INSERT COINS!'
+		0x6b-0x78: (17 tiles) -> PUSH START BUTTON!'
+		Note: NOT 1 tile per char, doesn't seem to use spaces (which ARE encoded as 0x20), 
+		or count the trailing '!' char (maybe the render SUBR adds it ?? Need to check)
+
+		Both texts are set and cleared by dedicated textram structs in ROM at addresses:
+		INSERT COINS:		SET: 0x32576,	CLEAR, 0x3258a
+		PUSH START BUTTON:	SET: 0x2b810, 	CLEAR, 0x2b82a
+
+		All structs are rendered by the same SUBR via 'bsr $137d2' instr
+		called at these addresses:
+		INSERT COINS:
+		  SET:	0xe3b0: lea $32576, A0	: 3 WORDs
+		  		0xe3b6: bsr $137d2		: 2 WORDs
+		  CLR:	0xe3be: lea $3258a, A0	: 3 WORDs
+		  		0xe3c4: bsr $137d2		: 2 WORDs
+		PUSH START BUTTON:
+		  SET:	0xe382: lea $2b810, A0	: 3 WORDs
+		  		0xe388: bsr $137d2		: 2 WORDs
+		  CLR:	0xe396: lea $2b82a, A0	: 3 WORDs
+		  		0xe39c: bsr $137d2		: 2 WORDs
+
+		So, to convert 'INSERT COINS' -> 'PUSH START BUTTON':
+		we can patch the struct addresses above for INSERT COINS
+		to use the same SET/CLR structs as PUSH START BUTTON.
+		This does mean the text will change position too since that's encoded in the struct.
+		Alternatively we could patch the INSERT COINS struct, but we are limited by space so
+		would only be able to fit 'PUSH START' to avoid overflowing into adjacent ROM instr's/data
+	*/
+
+	/* Get ptr to ROM data in RAM */
+	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	RAM[(0xe3b0 >> 1) + 1]	= 0x0002;	RAM[(0xe3b0 >> 1) + 2]	= 0xb810;	/* Patch SET: INSERT COINS -> PUSH START BUTTON */
+	RAM[(0xe3be >> 1) + 1]	= 0x0002;	RAM[(0xe3be >> 1) + 2]	= 0xb82a;	/* Patch CLR: INSERT COINS -> PUSH START BUTTON */
+	RAM[(0x2b810 >> 1) + 1]	= 0x0bc6;	RAM[(0x2b82a >> 1) + 1]	= 0x0bc6;	/* Move PUSH START BUTTON to same line as INSERT COINS */
+}
+
 static DRIVER_INIT( aburner ){
 	/* reset hack for AfterBurner */
 	sys16_patch_code(0xe76c,0x4a);
@@ -973,6 +1025,8 @@ static DRIVER_INIT( aburner2 ){
 
 	sys16_bg1_trans = 1;
 	sys16_interleave_sprite_data( 0x200000 );
+
+	aburner2_rom_patch(); /* ND: Mod ROM */
 }
 
 INTERRUPT_GEN( aburner_interrupt ){
