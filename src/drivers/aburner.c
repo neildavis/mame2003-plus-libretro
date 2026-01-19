@@ -999,6 +999,20 @@ static void aburner2_rom_patch(void) {
 	RAM[(0xe3b0 >> 1) + 1]	= 0x0002;	RAM[(0xe3b0 >> 1) + 2]	= 0xb810;	/* Patch SET: INSERT COINS -> PUSH START BUTTON */
 	RAM[(0xe3be >> 1) + 1]	= 0x0002;	RAM[(0xe3be >> 1) + 2]	= 0xb82a;	/* Patch CLR: INSERT COINS -> PUSH START BUTTON */
 	RAM[(0x2b810 >> 1) + 1]	= 0x0bc6;	RAM[(0x2b82a >> 1) + 1]	= 0x0bc6;	/* Move PUSH START BUTTON to same line as INSERT COINS */
+
+	/*
+		 We don't need (or want) the 'Credit(s) N' text
+		 Knock out 'bsr $137d2' for 'Credit'  (0/1) at 0xc634 with 2x 'nop' instr's (0x4e71)
+		 Knock out 'bsr $137d2' for 'Credits' (>=2) at 0xc642 with 2x 'nop' instr's (0x4e71)
+		 Knock out 'bsr $137d2' for 'Ships'   (>=2) at 0xcee0 with 2x 'nop' instr's (0x4e71)
+		 Knock out 'bsr $e284' for 'Credits' digit render SUBR at 0xc620 with 2x 'nop' instr's (0x4e71)
+		 Knock out 'bsr $cef4' for 'Ships' digit render SUBR at 0xced6 with 2x 'nop' instr's (0x4e71)
+	*/
+	RAM[0xc634 >> 1] = 0x4e71;	RAM[(0xc634 >> 1) + 1] = 0x4e71;
+	RAM[0xc642 >> 1] = 0x4e71;	RAM[(0xc642 >> 1) + 1] = 0x4e71;
+	RAM[0xcee0 >> 1] = 0x4e71;	RAM[(0xcee0 >> 1) + 1] = 0x4e71;
+	RAM[0xc620 >> 1] = 0x4e71;	RAM[(0xc620 >> 1) + 1] = 0x4e71;
+	RAM[0xced6 >> 1] = 0x4e71;	RAM[(0xced6 >> 1) + 1] = 0x4e71;
 }
 
 static DRIVER_INIT( aburner ){
