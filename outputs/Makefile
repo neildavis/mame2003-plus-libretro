@@ -178,7 +178,6 @@ install: build install_res install_tools
 	cp $(CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) $(SYSTEMD_CONFIG_DIR)/
 	sed -i 's|%TARGET%|$(INSTALL_DIR_BIN)/$(TARGET) $(BOOT_ROM)|g' $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE)
 	systemctl --user enable $(TARGET)
-	systemctl --user start $(TARGET)
 
 uninstall: uninstall_res uninstall_tools
 	systemctl --user stop $(TARGET) 2> /dev/null || true
@@ -187,8 +186,14 @@ uninstall: uninstall_res uninstall_tools
 	rm $(SYSTEMD_CONFIG_DIR)/$(SYSTEMD_CONFIG_FILE) 2> /dev/null || true
 	rm $(INSTALL_DIR_BIN)/$(TARGET) 2> /dev/null || true
 
+start:
+	systemctl --user start $(TARGET)
+
+stop:
+	systemctl --user stop $(TARGET)
+
 
 #Non-File Targets
-.PHONY: all build summary install install_res uninstall uninstall_res install_tools uninstall_tools clean
+.PHONY: all build summary install install_res uninstall uninstall_res install_tools uninstall_tools clean start stop
 
 -include $(DEPS)
