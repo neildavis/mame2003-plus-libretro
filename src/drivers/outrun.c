@@ -61,31 +61,6 @@ static void set_bg_page1( int data ){
 	sys16_bg_page[2] = data&0xf;
 }
 
-/*
-	ND: 4k of masking data to apply to sys16_textram
-	See Section 7: 'Text layer and text RAM'
-	https://jammarcade.net/images/2024/04/s16b.txt
-*/
-static data16_t sys16_textram_mask_map[] = { [0 ... 0x800] = 0xffff };
-
-static WRITE16_HANDLER( sys16_textram_shim_w )
-{
-	/* Mask data from map and write to sys16_textram */
-	data16_t mask_data = sys16_textram_mask_map[offset];
-	if (0xffff == mask_data) {
-		/* No change */
-		sys16_textram_w(offset, data, mem_mask);	
-	} else {
-		/* Replace data with mask */
-		sys16_textram_w(offset, mask_data, mem_mask);	
-	}
-}
-
-/* 
-	Calculate offset into sys16_textram_mask_map based on x, y position
-*/
-#define sys16_textram_translate_offset(x, y) (x + (y << 6))
-
 #if 0
 static void set_fg2_page( int data ){
 	sys16_fg2_page[0] = data>>12;
@@ -1598,6 +1573,32 @@ static WRITE16_HANDLER( shared_ram2_w ){
 	COMBINE_DATA(&shared_ram2[offset]);
 }
 
+/*
+	ND: Hook the Super Hang-On input port 0 (buttons/coins)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
+*/
+static data16_t shangon_btns = 0xffff; /* ipt0 bitfield */
+static data16_t sho_credits_val = 0xffff; /* any invalid value so first write is always triggered */
+static READ16_HANDLER( shangon_input_port_2_word_r ) {
+	data16_t buttons_ipt = readinputport(2), buttons_ret = buttons_ipt;
+	if ((buttons_ipt ^ shangon_btns) & 0x10) {
+		/* Start button state changed */
+
+		/* printf("shangon: Start Button %s\n", (0 == (buttons_ipt & 0x08)) ? "Pressed" : "Released"); */
+		if (0 == (buttons_ipt & 0x10) && (0 == sho_credits_val)) {
+			/* Start button pressed and zero credits - Simulate coin */
+			buttons_ret |= 0x10; /* Disable Start button */
+			buttons_ret &= (~0x01); /* Simulate Coin*/
+			/* printf("shangon: Simulate Coin In!\n"); */
+		}
+	}
+	/* We need to save the input port state as read from the port to catch changes next time ... */
+	shangon_btns = buttons_ipt;
+	/* ... but we return our modfifed state to fool the game */
+	return buttons_ret;
+}
+
 static MEMORY_READ16_START( shangon_readmem )
     { 0x000000, 0x03ffff, MRA16_ROM },
 	{ 0x20c640, 0x20c647, sound_shared_ram_r },
@@ -1609,17 +1610,15 @@ static MEMORY_READ16_START( shangon_readmem )
 	{ 0xc68000, 0xc68fff, shared_ram_r },
 	{ 0xc7c000, 0xc7ffff, shared_ram2_r },
 	{ 0xe00002, 0xe00003, sys16_coinctrl_r },
-	{ 0xe01000, 0xe01001, input_port_2_word_r }, /* service */
-	{ 0xe0100c, 0xe0100d, input_port_4_word_r }, /* dip2 */
-	{ 0xe0100a, 0xe0100b, input_port_3_word_r }, /* dip1 */
+	{ 0xe01000, 0xe01001, shangon_input_port_2_word_r },	/* service */
+	{ 0xe0100c, 0xe0100d, input_port_4_word_r },			/* dip2 */
+	{ 0xe0100a, 0xe0100b, input_port_3_word_r },			/* dip1 */
 	{ 0xe030f8, 0xe030f9, ho_io_x_r },
 	{ 0xe030fa, 0xe030fb, ho_io_y_r },
 MEMORY_END
 
-/* SHO Service port/buttons */
+/* SHO Credits / Service port/buttons */
 static const offs_t sho_credits_offset = (0x20c052 - 0x20c000) / 2;
-static data16_t sho_credits_val = 0xffff; /* any invalid value so first write is always triggered */
-static data16_t sho_buttons_val = 0xffff; /* any invalid value so first write is always triggered */
 static WRITE16_HANDLER( sho_credits_w )
 {
 	/* Replace default memory handler by writing to mem bank */
@@ -1637,71 +1636,9 @@ static WRITE16_HANDLER( sho_credits_w )
 			output_set_value(SHO_CREDITS_NAME, credits);
 			sho_credits_val = credits;
 		}
-	} else { /* Buttons */
-		data16_t buttons = data & 0xff;
-		/* Check if Turbo button state changed*/
-		/*
-		if ((sho_buttons_val ^ buttons) & 0x20) { 
-			printf("shangon: Turbo Button %s\n", (buttons & 0x20) ? "Pressed" : "Released");
-		} 
-		*/
-		/* Check if Start button state changed*/
-		if ((sho_buttons_val ^ buttons) & 0x10) { 
-			/* Start button state changed*/
-			struct InputPort *ip;
-
-			/* Code to find the coin input port manually. Reliable but inneficient */
-			/*
-			ip = &Machine->input_ports[0];
-			while (ip->type != IPT_END) {
-				if (ip->type == IPT_COIN1) {
-					break;
-				}
-				ip++;
-			}
-			*/
-			/* hardcoded coin input port from debugging, will need to change if input port definitions are modified */
-			/* Always 7 regardless of HANGON_DIGITAL_CONTROLS from testing */
-			ip = &Machine->input_ports[7]; 
-			/* printf("shangon: Start Button %s\n", (buttons & 0x10) ? "Pressed" : "Released"); */
-
-
-			if (buttons & 0x10 && 0 == sho_credits_val) {
-				/* Start button pressed and zero credits - Simulate coin */
-				ip->default_value = IP_ACTIVE_HIGH;
-				/* printf("shangon: Simulate Coin In!\n"); */
-			} else {
-				/* Start button released - reset coin port */
-				ip->default_value = IP_ACTIVE_LOW;
-			}
-		}
-		sho_buttons_val = buttons;
-	}
+	} 
 }
 
-/* SHO Start button state */
-static const offs_t sho_start_btn_lamp_offset = (0x20c3be - 0x20c000) / 2;
-static data16_t sho_start_btn_lamp_val = 0xffff; /* any invalid value so first write is always triggered */
-static WRITE16_HANDLER( sho_start_btn_lamp_w )
-{
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_start_btn_lamp_offset]);
-
-	/*
-		LSB=some flags? 3C = text shown (light on), 1E = text hidden (light off)
-	*/
-
-	if (ACCESSING_LSB16 && (data & 0xff) != sho_start_btn_lamp_val) {
-		sho_start_btn_lamp_val = data & 0xff;
-		if (0x3c == sho_start_btn_lamp_val) {
-			/* Start button lamp lit */
-			/* printf("shangon: Start Button Lamp On\n"); */
-		} else if (0x1e == sho_start_btn_lamp_val) {
-			/* Start button lamp off */
-			/* printf("shangon: Start Button Lamp Off\n"); */
-		}
-	}
-}
 /* SHO 'Insert Coins' & 'Push Start Button' frame ctr */
 static const offs_t sho_coin_start_frame_ctr_offset = (0x20c428 - 0x20c000) / 2;
 static WRITE16_HANDLER( sho_coin_start_toggle_w )
@@ -1864,7 +1801,6 @@ static MEMORY_WRITE16_START( shangon_writemem )
 	{ 0x20c640, 0x20c647, sound_shared_ram_w },
 /* ND: SHO write hooks */
 	{ 0x20c052, 0x20c053, sho_credits_w, },
-	/* { 0x20c3be, 0x20c3bf, sho_start_btn_lamp_w, }, */ /* use sho_coin_start_toggle_w instead */
 	{ 0x20c428, 0x20c429, sho_coin_start_toggle_w, },
 	{ 0x20c42a, 0x20c42b, sho_stage_bcd_w },
 	{ 0x20c500, 0x20c501, sho_time_w, },
@@ -1873,12 +1809,7 @@ static MEMORY_WRITE16_START( shangon_writemem )
 /* ND */
 	{ 0x20c000, 0x20ffff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
 	{ 0x400000, 0x40ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
-/* ND: #define SHO_TEXTRAM_SHIM if textram masking is required */
-#ifdef SHO_TEXTRAM_SHIM
-	{ 0x410000, 0x410fff, sys16_textram_shim_w, &sys16_textram },
-#else
 	{ 0x410000, 0x410fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
-#endif
 	{ 0x600000, 0x600fff, SYS16_MWA16_SPRITERAM, &sys16_spriteram },
 	{ 0xa00000, 0xa00fff, SYS16_MWA16_PALETTERAM, &paletteram16 },
 	{ 0xc68000, 0xc68fff, shared_ram_w, &shared_ram },

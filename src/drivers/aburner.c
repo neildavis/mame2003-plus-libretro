@@ -740,59 +740,71 @@ static WRITE16_HANDLER( aburner_horiz_v_w ){
 }
 
 /* 
-	ND: Hook IPT0 & Credits at 0xff8050-0xff8053
-	IPT0 (input_port_0_word_r) is at 0xff8050 (LSB) but inverted (logical NOT)
-	 : PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) now IP_ACTIVE_HIGH since inverted
-	 : PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )  now IP_ACTIVE_HIGH since inverted
-	Credits is at 0xff8052 (MSB)
+	ND: Credits at 0xff8052 (MSB)
 */
-static const offs_t aburner_ipt0_credits_w_offset = ((0xff8050 - 0xff8000) >> 1); 
-static data16_t aburner_credits = 0xffff; /* any invalid value to hook first write */
-static data16_t aburner_btns = 0; /* ipt0 bitfield */
-static WRITE16_HANDLER( aburner_ipt0_credits_w ) {
+static const offs_t aburner_credits_offset = ((0xff8052 - 0xff8000) >> 1); 
+static data16_t aburner_credits = 0;
+static bool aburner_game_in_progress = false;
+static WRITE16_HANDLER( aburner_credits_w ) {
 	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_workingram[aburner_ipt0_credits_w_offset + offset]);
+	COMBINE_DATA(&sys16_workingram[aburner_credits_offset + offset]);
 
-	if (0 == offset && ACCESSING_LSB16) {
-		/* IPT0 (LSB) */
-		data16_t buttons = data & 0xff;
-		if ((buttons ^ aburner_btns) & 0x08) {
-			/* Start button state changed */
-			struct InputPort *ip;
-			/* Code to find the coin input port manually. Reliable but inneficient */
-			/*
-			ip = &Machine->input_ports[0];
-			while (ip->type != IPT_END) {
-				if (ip->type == IPT_COIN1) {
-					break;
-				} else if (ip->type == IPT_COIN2) {
-					break;
-				}
-				ip++;
-			}
-			*/			
-			/* hardcoded coin input port from debugging, will need to change if input port definitions are modified */
-			ip = &Machine->input_ports[7]; 
-
-			if (buttons & 0x08 && 0 == aburner_credits) {
-				/* Start button pressed and zero credits - Simulate coin */
-				ip->default_value = IP_ACTIVE_HIGH;
-				/* printf("aburner: Simulate Coin In!\n"); */
-			} else {
-				/* Start button released - reset coin port */
-				ip->default_value = IP_ACTIVE_LOW;
-			}
-			/* printf("aburner: Start Button %s\n", (buttons & 0x08) ? "Pressed" : "Released"); */
+	if (ACCESSING_MSB16) {
+		data16_t credits = (data >> 8) & 0xff;
+		/* printf("aburner2: Credits: %d\n", credits); */
+		if (credits < aburner_credits) {
+			/* Credit used. Game starting*/
+			aburner_game_in_progress = true;
+			/* printf("aburner2: Game in progress = TRUE\n"); */
 		}
-		aburner_btns = buttons;
-	} else if (1 == offset && ACCESSING_MSB16) {
-		/* Credits (MSB) */
-		data16_t credits_w = (data >> 8) & 0xff;
-		if (aburner_credits != credits_w) {
-			aburner_credits = credits_w;
-			/* printf("aburner2: Credits: %d\n", aburner_credits); */
+		aburner_credits = credits;
+	}
+}
+
+/* 
+	ND: Lives (aka 'Ships') at 0xff88e0 (LSB)
+*/
+static const offs_t aburner_lives_offset = ((0xff88e0 - 0xff8000) >> 1); 
+static data16_t aburner_lives = 0xffff; /* any invalid value to trap first write */
+static WRITE16_HANDLER( aburner_lives_w ) {
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA(&sys16_workingram[aburner_lives_offset + offset]);
+
+	if (ACCESSING_LSB16) {
+		data16_t lives = data & 0xff;
+		/* printf("aburner2: Lives: %d\n", lives); */
+		if (0 == lives) {
+			/* Lives hit zero : Game Over */
+			aburner_game_in_progress = false;
+			/* printf("aburner2: Game in progress = FALSE\n"); */
+		}
+		aburner_lives = lives;
+	}
+}
+
+/*
+	ND: Hook the After Burner input port 0 (buttons/coins)
+	 : PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
+	 : PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
+*/
+static data16_t aburner_btns = 0xffff; /* ipt0 bitfield */
+static READ16_HANDLER( aburner_input_port_0_word_r ) {
+	data16_t buttons_ipt = readinputport(0), buttons_ret = buttons_ipt;
+	if ((buttons_ipt ^ aburner_btns) & 0x08) {
+		/* Start button state changed */
+
+		/* printf("aburner: Start Button %s\n", (0 == (buttons_ipt & 0x08)) ? "Pressed" : "Released"); */
+		if (0 == (buttons_ipt & 0x08) && ((0 == aburner_credits) || aburner_game_in_progress)) {
+			/* Start button pressed and either zero credits or in game - Simulate coin */
+			buttons_ret |= 0x08; /* Disable Start button */
+			buttons_ret &= (~0x40); /* Simulate Coin*/
+			/* printf("aburner: Simulate Coin In!\n"); */
 		}
 	}
+	/* We need to save the input port state as read from the port to catch changes next time ... */
+	aburner_btns = buttons_ipt;
+	/* ... but we return our modfifed state to fool the game */
+	return buttons_ret;
 }
 
 static MEMORY_READ16_START( aburner_readmem )
@@ -808,7 +820,7 @@ static MEMORY_READ16_START( aburner_readmem )
 	{ 0x120000, 0x12401f, SYS16_MRA16_PALETTERAM },
 	{ 0x130000, 0x130001, aburner_analog_r },
 	{ 0x140000, 0x140001, aburner_motor_status_r },
-	{ 0x150000, 0x150001, input_port_0_word_r },		/* buttons */
+	{ 0x150000, 0x150001, aburner_input_port_0_word_r },/* buttons */
 	{ 0x150004, 0x150005, input_port_1_word_r },		/* DSW A */
 	{ 0x150006, 0x150007, input_port_2_word_r },		/* DSW B */
 	{ 0x200000, 0x27ffff, SYS16_CPU3ROM16_r   },		/* CPU2 ROM */
@@ -871,7 +883,8 @@ static MEMORY_WRITE16_START( aburner_writemem )
 
 	{ 0x2ec000, 0x2ee001, SYS16_MWA16_ROADRAM, &sys16_roadram },	/* 125,126 */
 	
-	{ 0xff8050, 0xff8053, aburner_ipt0_credits_w },
+	{ 0xff8052, 0xff8053, aburner_credits_w },
+	{ 0xff88e0, 0xff88e2, aburner_lives_w },
 	{ 0xff8000, 0xffffff, SYS16_MWA16_WORKINGRAM, &sys16_workingram },	/* 55,60 */
 MEMORY_END
 
@@ -1026,7 +1039,7 @@ static void aburner2_rom_patch(void) {
 					 0A is num tiles (-1) : 11 tiles
 		The equivalent struct for clearing the 'INSERT COIN' text follows IMMEDIATELY at 0x3263e:
 			0x3263e: 07 C8 03 0F 0x20 (... repeated x16 ....) 0x00
-		Note: it starts 4 chars to the left (from textram offset 07C8) and renders 16 tiles
+		Note: it starts 2 chars to the left (4 bytes less, from textram offset 07C8) and renders 16 tiles (5 more)
 		We can't extend the text to 'PUSH START BUTTON' since it would overflow into the following clear struct
 		BUT we can relocate both the set & clear structs to some free space in the ROM
 		ROM is 0x000000-0x07ffff. There appears to be some free space at 0x0000c0 onwards
