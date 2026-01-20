@@ -996,8 +996,8 @@ static void aburner2_rom_patch(void) {
 
 	/* Get ptr to ROM data in RAM */
 	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
-	RAM[(0xe3b0 >> 1) + 1]	= 0x0002;	RAM[(0xe3b0 >> 1) + 2]	= 0xb810;	/* Patch SET: INSERT COINS -> PUSH START BUTTON */
-	RAM[(0xe3be >> 1) + 1]	= 0x0002;	RAM[(0xe3be >> 1) + 2]	= 0xb82a;	/* Patch CLR: INSERT COINS -> PUSH START BUTTON */
+	RAM[(0xe3b0 >> 1) + 1]	= 0x0002;	RAM[(0xe3b0 >> 1) + 2]	= 0xb810;	/* Patch SET: INSERT COINS -> SET: PUSH START BUTTON */
+	RAM[(0xe3be >> 1) + 1]	= 0x0002;	RAM[(0xe3be >> 1) + 2]	= 0xb82a;	/* Patch CLR: INSERT COINS -> CLR: PUSH START BUTTON */
 	RAM[(0x2b810 >> 1) + 1]	= 0x0bc6;	RAM[(0x2b82a >> 1) + 1]	= 0x0bc6;	/* Move PUSH START BUTTON to same line as INSERT COINS */
 
 	/*
@@ -1013,6 +1013,45 @@ static void aburner2_rom_patch(void) {
 	RAM[0xcee0 >> 1] = 0x4e71;	RAM[(0xcee0 >> 1) + 1] = 0x4e71;
 	RAM[0xc620 >> 1] = 0x4e71;	RAM[(0xc620 >> 1) + 1] = 0x4e71;
 	RAM[0xced6 >> 1] = 0x4e71;	RAM[(0xced6 >> 1) + 1] = 0x4e71;
+
+	/*
+		Change 'INSERT COIN' to 'PUSH START BUTTON' in 'Game Over'/'Continue?' screen:
+		This is a bit more compicated as the text is drawn char-by-char from ASCII values in RAM,
+		using a SUBR at 0x137e2 to convert ASCII to tile ids and double-height scale them.
+		The ASCII string for 'INSERT COIN' is in a textram struct at 0x3262e:
+			0x3262e: 07 CC 03 0A 49 4e 53 45 52 54 20 43 4f 49 4e 00
+					              I  N  S  E  R  T     C  O  I  N \0
+					 07CC is texram offset pos (from 0xd0000)
+					 03 is some flags (colour?)
+					 0A is num tiles (-1) : 11 tiles
+		The equivalent struct for clearing the 'INSERT COIN' text follows IMMEDIATELY at 0x3263e:
+			0x3263e: 07 C8 03 0F 0x20 (... repeated x16 ....) 0x00
+		Note: it starts 4 chars to the left (from textram offset 07C8) and renders 16 tiles
+		We can't extend the text to 'PUSH START BUTTON' since it would overflow into the following clear struct
+		BUT we can relocate both the set & clear structs to some free space in the ROM
+		ROM is 0x000000-0x07ffff. There appears to be some free space at 0x0000c0 onwards
+		So we'll create some 'surrogate' structs there and patch the struct addresses in code prior to the bsr $137e2
+	*/
+	{
+		static const char set_push_start_btn_textram_struct[] = "\x07\xC6\x03\x10""PUSH START BUTTON\x00";			/* 0x10 = 17 tiles -1 for dbra */
+		static const char clr_push_start_btn_textram_struct[] = "\x07\xC0\x03\x16""                       \x00"; 	/* 0x16 = 23 tiles -1 for dbra */
+		static const offs_t set_struct_rom_addr = 0x0000D0;
+		static const offs_t clr_struct_rom_addr = set_struct_rom_addr + sizeof(set_push_start_btn_textram_struct) -1;	/* -1: ignore null terminator */
+		/* Copy structs to ROM: copy 1 WORD at a time to retain correct endianness */
+		for (int i = 0; i < sizeof(set_push_start_btn_textram_struct) -1; i += 2) {
+			RAM[(set_struct_rom_addr + i) >> 1] =  set_push_start_btn_textram_struct[i] << 8 | (set_push_start_btn_textram_struct[i + 1] & 0xff);	
+		}
+		for (int i = 0; i < sizeof(clr_push_start_btn_textram_struct) -1; i += 2)
+			RAM[(clr_struct_rom_addr + i) >> 1] = clr_push_start_btn_textram_struct[i] << 8 | (clr_push_start_btn_textram_struct[i + 1] & 0xff);
+
+		/* Now patch the struct addresses in code prior to bsr $137e2 calls */
+		/* Patch SET: INSERT COIN -> surrogate SET: PUSH START BUTTON */
+		RAM[(0xed6e >> 1) + 1]	= (set_struct_rom_addr >> 16) & 0xffff; /*MSW*/
+		RAM[(0xed6e >> 1) + 2]	= set_struct_rom_addr & 0xffff; /* LSW */
+		// /* Patch CLR: INSERT COIN -> surrogate CLR: PUSH START BUTTON */
+		RAM[(0xf174 >> 1) + 1]	= (clr_struct_rom_addr >> 16) & 0xffff; /*MSW*/
+		RAM[(0xf174 >> 1) + 2]	= clr_struct_rom_addr & 0xffff; /* LSW */
+	}
 }
 
 static DRIVER_INIT( aburner ){
