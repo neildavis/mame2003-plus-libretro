@@ -5,13 +5,13 @@ PIN_HORIZ_H_SERVO=26
 PIN_HORIZ_V_SERVO=16
 
 # Percentage-based Midpoints (from your C code)
-MID_H_PCT=1520
-MID_V_PCT=1450
+MID_H_PCT=1500
+MID_V_PCT=1500
 
 # Range limits for Percentage calculations
-MAX_H_LIMIT=2250
+MAX_H_LIMIT=2000
 RANGE_H=$((MAX_H_LIMIT - MID_H_PCT))
-MAX_V_LIMIT=1700
+MAX_V_LIMIT=2000
 RANGE_V=$((MAX_V_LIMIT - MID_V_PCT))
 
 # Absolute Hardware Limits for Direct PWM

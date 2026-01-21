@@ -13,25 +13,27 @@ using namespace udd;
 
 /* Define GPIO pins for outputs */
 // Pins for LEDs
-static const int PIN_LAMP_DANGER    = 14;    /* Danger lamp will be on GPIO/BCM pin 14 */
+static const int PIN_LAMP_FF        = 23;    /* Force Feedback will be on GPIO/BCM pin 23 */
+static const int PIN_LAMP_LOCK      = 24;    /* Lock lamp will be on GPIO/BCM pin 24 */
+static const int PIN_LAMP_DANGER    = 27;    /* Danger lamp will be on GPIO/BCM pin 27 */
 // Pins for ST7789 LCD Display
 static const int PIN_ST7798_CS      = 5;    // Chip Select
 static const int PIN_ST7798_DC      = 6;    // SPI Data/Cmd select
 static const int PIN_ST7798_RST     = 13;   // ReSeT
-static const int PIN_ST7798_BLK     = -1;   // Backlight (not used)
+static const int PIN_ST7798_BLK     = 4;    // Backlight
 // Pins for servos
 const int PIN_HORIZ_H_SERVO         = 26;   // BCM
 const int PIN_HORIZ_V_SERVO         = 16;   // BCM
 
 // Artificial Horizon Servo Control
 // - Horiz: Range == 730
-const int SERVO_HORIZ_PWM_MIN   = 790;  // Full Right
-const int SERVO_HORIZ_PWM_MID   = 1520; // Mid point (level)
-const int SERVO_HORIZ_PWM_MAX   = 2250; // Full Left
+const int SERVO_HORIZ_PWM_MIN   = 1000; // Full Right
+const int SERVO_HORIZ_PWM_MID   = 1500; // Mid point (level)
+const int SERVO_HORIZ_PWM_MAX   = 2000; // Full Left
 // - Vert: Range == 350
-const int SERVO_VERT_PWM_MIN   = 1100;  // Full Down
-const int SERVO_VERT_PWM_MID   = 1450;  // Mid point
-const int SERVO_VERT_PWM_MAX   = 1800;  // Full Up
+const int SERVO_VERT_PWM_MIN   = 1150;  // Full Down
+const int SERVO_VERT_PWM_MID   = 1500;  // Mid point
+const int SERVO_VERT_PWM_MAX   = 1850;  // Full Up
 
 static const int kSpiSpeed = 90000000;
 // Note: Although our display is sold as 280x240 it is actually 320x240 from the driver point of view.
@@ -87,7 +89,11 @@ void AfterBurnerOutputHandler::init(OutputHandlerMode mode) {
     m_display->clearScreen(BLACK);
 
     // Setup LEDs
-	pinMode(PIN_LAMP_DANGER, OUTPUT);
+	pinMode(PIN_LAMP_FF, OUTPUT);
+    digitalWrite(PIN_LAMP_FF, 0);
+	pinMode(PIN_LAMP_LOCK, OUTPUT);
+    digitalWrite(PIN_LAMP_LOCK, 0);	
+    pinMode(PIN_LAMP_DANGER, OUTPUT);
     digitalWrite(PIN_LAMP_DANGER, 0);
 
     // Centre Servos
@@ -222,11 +228,11 @@ void AfterBurnerOutputHandler::update_danger(int value) {
 void AfterBurnerOutputHandler::update_lock(int value) {
     std::unique_ptr<Image> &image = value > 0 ? m_bmp_lock : m_bmp_clear_lock;
     m_display->showImage(*image, point_lock_tl, point_lock_br, kDisplayRotation);
+    digitalWrite(PIN_LAMP_LOCK, value > 0 ? 1 : 0);
 }
 
 void AfterBurnerOutputHandler::update_force_feedback(int value) {
-    /* For now, until we have a force feedback motor we just light the Danger lamps for a bit more effect */
-    digitalWrite(PIN_LAMP_DANGER, value > 0 ? 1 : 0);
+    digitalWrite(PIN_LAMP_FF, value > 0 ? 1 : 0);
 }
 
 void AfterBurnerOutputHandler::update_start_led(int value) {
