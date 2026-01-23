@@ -4,26 +4,35 @@
 PIN_HORIZ_H_SERVO=26
 PIN_HORIZ_V_SERVO=16
 
-# Horizontal Constants (Range: 730)
-MID_H=1520
-MAX_H=2250
-RANGE_H=$((MAX_H - MID_H))
+# Percentage-based Midpoints (from your C code)
+MID_H_PCT=1520
+MID_V_PCT=1450
 
-# Vertical Constants (Range: 350)
-MID_V=1450
-MAX_V=1800
-RANGE_V=$((MAX_V - MID_V))
+# Range limits for Percentage calculations
+MAX_H_LIMIT=2250
+RANGE_H=$((MAX_H_LIMIT - MID_H_PCT))
+MAX_V_LIMIT=1700
+RANGE_V=$((MAX_V_LIMIT - MID_V_PCT))
 
-# Default values
-RAW_H=0
-RAW_V=0
+# Absolute Hardware Limits for Direct PWM
+ABS_MIN=750
+ABS_MAX=2250
+DEFAULT_PWM=1500
+
+# Initialize variables
+RAW_H_PCT=""
+RAW_V_PCT=""
+DIRECT_H=""
+DIRECT_V=""
 
 # --- Parse Named Parameters ---
-while getopts "h:v:" opt; do
+while getopts "h:v:H:V:" opt; do
   case $opt in
-    h) RAW_H=$OPTARG ;;
-    v) RAW_V=$OPTARG ;;
-    *) echo "Usage: $0 [-h horizontal_percent] [-v vertical_percent]"; exit 1 ;;
+    h) RAW_H_PCT=$OPTARG ;;
+    v) RAW_V_PCT=$OPTARG ;;
+    H) DIRECT_H=$OPTARG ;;
+    V) DIRECT_V=$OPTARG ;;
+    *) echo "Usage: $0 [-h %] [-v %] [-H pwm] [-V pwm]"; exit 1 ;;
   esac
 done
 
@@ -31,45 +40,53 @@ done
 
 clamp() {
     local val=$1
-    if (( val < -100 )); then echo -100
-    elif (( val > 100 )); then echo 100
+    local min=$2
+    local max=$3
+    if (( val < min )); then echo "$min"
+    elif (( val > max )); then echo "$max"
     else echo "$val"; fi
 }
 
-calculate_pwm() {
-    local mid=$1
-    local range=$2
-    local percent=$3
-    echo $(( mid + (percent * range / 100) ))
-}
-
-# --- Validation & Error Handling ---
+# --- Validation & Daemon Check ---
 
 if [[ ! -x /usr/bin/pigs ]]; then
     echo "-------------------------------------------------------"
-    echo "ERROR: 'pigs' (pigpio) is not installed on this system."
-    echo "To fix this, please run the following commands:"
-    echo "  1. sudo apt update"
-    echo "  2. sudo apt install pigpio"
-    echo "  3. sudo pigpiod"
+    echo "ERROR: 'pigs' (pigpio) is not installed."
+    echo "To fix: sudo apt update && sudo apt install pigpio"
+    echo "Then start with: sudo pigpiod"
     echo "-------------------------------------------------------"
     exit 1
 fi
 
 if ! pgrep pigpiod > /dev/null; then
-    echo "NOTICE: pigpiod daemon is not running. Starting it now..."
-    sudo pigpiod
-    sleep 1 # Give the daemon a moment to initialize
+    sudo pigpiod && sleep 1
 fi
 
-# --- Main Logic ---
+# --- Logic: Determine Final PWM Values ---
 
-PERCENT_H=$(clamp "$RAW_H")
-PERCENT_V=$(clamp "$RAW_V")
+# Horizontal Axis Logic
+if [[ -n "$DIRECT_H" ]]; then
+    FINAL_H=$(clamp "$DIRECT_H" "$ABS_MIN" "$ABS_MAX")
+elif [[ -n "$RAW_H_PCT" ]]; then
+    SAFE_H_PCT=$(clamp "$RAW_H_PCT" -100 100)
+    FINAL_H=$(( MID_H_PCT + (SAFE_H_PCT * RANGE_H / 100) ))
+else
+    # Default if no horizontal params provided
+    FINAL_H=$DEFAULT_PWM
+fi
 
-PWM_H=$(calculate_pwm $MID_H $RANGE_H $PERCENT_H)
-PWM_V=$(calculate_pwm $MID_V $RANGE_V $PERCENT_V)
+# Vertical Axis Logic
+if [[ -n "$DIRECT_V" ]]; then
+    FINAL_V=$(clamp "$DIRECT_V" "$ABS_MIN" "$ABS_MAX")
+elif [[ -n "$RAW_V_PCT" ]]; then
+    SAFE_V_PCT=$(clamp "$RAW_V_PCT" -100 100)
+    FINAL_V=$(( MID_V_PCT + (SAFE_V_PCT * RANGE_V / 100) ))
+else
+    # Default if no vertical params provided
+    FINAL_V=$DEFAULT_PWM
+fi
 
-echo "Setting: H ${PERCENT_H}% (${PWM_H}us) | V ${PERCENT_V}% (${PWM_V}us)"
-pigs servo "${PIN_HORIZ_H_SERVO}" "${PWM_H}"
-pigs servo "${PIN_HORIZ_V_SERVO}" "${PWM_V}"
+# --- Move Servos ---
+echo "Moving: H -> ${FINAL_H}us | V -> ${FINAL_V}us"
+pigs servo "${PIN_HORIZ_H_SERVO}" "${FINAL_H}"
+pigs servo "${PIN_HORIZ_V_SERVO}" "${FINAL_V}"
