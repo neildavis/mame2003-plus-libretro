@@ -2040,6 +2040,16 @@ static void aburner_draw_road( struct mame_bitmap *bitmap, const struct rectangl
 	*/
 	int page = sys16_roadram[0x1000];
 	int sy;
+	/* 
+		ND: road contol alone is not enough to control drawing the horizon. It is not swicthed off in other attract screens
+		We take advantage of known state of sys16_roadram when not in 'flying' screen:
+		sys16_roadram[0]:
+			0x100 flying
+			0x800 non-flying attract modes
+	*/
+	if (sys16_roadram[0] & 0x0800) {
+		page &= ~0x4; 
+	}
 
 	for( sy=cliprect->min_y; sy<=cliprect->max_y; sy++ ){
 		UINT16 *dest = (UINT16 *)bitmap->line[sy] + cliprect->min_x; /* assume 16bpp */
