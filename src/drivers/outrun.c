@@ -1885,14 +1885,7 @@ void shangon_hud_patch(void) {
 	RAM[0x168a >> 1] = 0x4e71;	RAM[(0x168a >> 1) + 1] = 0x4e71;
 	/* Hide Speed numerals in HUD by patching out call to render routine (bsr $1e34) @ 0x16d8 with 2x 'nop' (0x4e71) instr's */
 	RAM[0x16d8 >> 1] = 0x4e71;	RAM[(0x16d8 >> 1) + 1] = 0x4e71;
-
 }
-
-/* 
-	ND: Alternative text for 'INSERT COINS' on title screen 
-	(since we enable freeplay by mapping Start -> Coin when Credits == 0)
-*/
-static const char *const sho_text_insert_coins_repl = "\3  PUSH START";
 
 static DRIVER_INIT( shangonb ){
 	generate_gr_screen(512,1024,8,0,4,0x8000);
@@ -1917,11 +1910,16 @@ static DRIVER_INIT( shangonb ){
 	/* Get ptr to ROM data in RAM */
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 
-	/* 0x0060ce: "Insert Coins" -> "Push Start" */
-	for (UINT16 *p = &RAM[0x60ce >> 1], i = 0; i < strlen(sho_text_insert_coins_repl) ; i += 2 ) {
-		*p++ = (sho_text_insert_coins_repl[i] << 8) | sho_text_insert_coins_repl[i + 1];
-	}
-	
+	/* "Insert Coins" -> "Push Start Button" - mod addr's in render routine at 0x1a60 */
+	RAM[0x1a64 >> 1] = 0x0746;	/* Patch textram destination address in A0 (2 places to left to centre longer text)*/
+	RAM[0x1a6a >> 1] = 0x155e;	/* Patch ROM address in A1 of text to render from IC (0x006e) to PSB (0x155e) */
+
+	/* Knock out 'Credit(s)' text and num */
+	RAM[0x28de >> 1] = 0x4e71;	RAM[(0x28de >> 1) + 1] = 0x4e71; /* bsr -> nop for text render*/
+	RAM[0x28e2 >> 1] = 0x4e75;	/* replace lea $410cc4.l,A0  with early rts to skip render digit at 0x28e2 */
+	RAM[(0x28e2 >> 1) + 1] = 0x4e71;	RAM[(0x28e2 >> 1) + 2] = 0x4e71; /* Fill double word gap left from previous lea with nop */
+
+
 #define SHO_HUD_MOD
 #ifdef SHO_HUD_MOD
 	shangon_hud_patch();
