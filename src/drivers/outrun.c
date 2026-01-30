@@ -814,20 +814,15 @@ static void outrun_reset(void)
  *  Out Run Time handler
  *************************************/
 
-static UINT16 outrun_time_data = 0;
 static UINT16 outrun_time_last = 0; /* The last time we recorded */
 static UINT16 outrun_time_max = 75; /* max time in seconds when you start the game */
 
-static READ16_HANDLER( outrun_time_r )
+static WRITE16_HANDLER( outrun_sys16_extraram2_w )
 {
-	return outrun_time_data;
-}
-
-static WRITE16_HANDLER( outrun_time_w )
-{
-	COMBINE_DATA( &outrun_time_data );
-	/* Time is stored in single byte packed BCD */
-	if (ACCESSING_LSB) {
+	/* { 0x060000, 0x067fff, outrun_sys16_extraram2_w, &sys16_extraram2 } */
+	COMBINE_DATA( sys16_extraram2 + offset );
+	/* Time is stored in single byte packed BCD of WORD @ 0x60860 (LSB - offset: 0x430 ) */
+	if (0x430 == offset && ACCESSING_LSB) {
 		UINT16 fuel_percent = 0;
 		UINT16 time = 10 * ((data & 0x00f0) >> 4) + (data & 0x000f);
 		if (time > outrun_time_last) {
@@ -849,9 +844,7 @@ static MEMORY_READ16_START( outrun_readmem )
 	{ 0x000000, 0x05ffff, MRA16_ROM },
 	{ 0x060900, 0x060907, sound_shared_ram_r },		/*??? */
 	
-	{ 0x060000, 0x060859, SYS16_MRA16_EXTRAM2 },
-	{ 0x060860, 0x060861, outrun_time_r },
-	{ 0x060862, 0x067fff, SYS16_MRA16_EXTRAM2 },
+	{ 0x060000, 0x067fff, SYS16_MRA16_EXTRAM2 },
 
 	{ 0x100000, 0x10ffff, SYS16_MRA16_TILERAM },
 	{ 0x110000, 0x110fff, SYS16_MRA16_TEXTRAM },
@@ -873,9 +866,7 @@ static MEMORY_WRITE16_START( outrun_writemem )
 	{ 0x000000, 0x05ffff, MWA16_ROM },
 	{ 0x060900, 0x060907, sound_shared_ram_w },		/*??? */
 
-	{ 0x060000, 0x060859, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
-	{ 0x060860, 0x060861, outrun_time_w },
-	{ 0x060862, 0x067fff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
+	{ 0x060000, 0x067fff, outrun_sys16_extraram2_w, &sys16_extraram2 },
 
 	{ 0x100000, 0x10ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
 	{ 0x110000, 0x110fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
@@ -1617,13 +1608,8 @@ static MEMORY_READ16_START( shangon_readmem )
 	{ 0xe030fa, 0xe030fb, ho_io_y_r },
 MEMORY_END
 
-/* SHO Credits / Service port/buttons */
-static const offs_t sho_credits_offset = (0x20c052 - 0x20c000) / 2;
 static WRITE16_HANDLER( sho_credits_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_credits_offset]);
-
 	/*
 		MSB=Credits 0-9, 
 		LSB=NOT(IPT2/input_port_2_word_r)
@@ -1639,13 +1625,8 @@ static WRITE16_HANDLER( sho_credits_w )
 	} 
 }
 
-/* SHO 'Insert Coins' & 'Push Start Button' frame ctr */
-static const offs_t sho_coin_start_frame_ctr_offset = (0x20c428 - 0x20c000) / 2;
 static WRITE16_HANDLER( sho_coin_start_toggle_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_coin_start_frame_ctr_offset]);
-
 	/*
 		LSB=frame ctr. 00->3C (61 frames !?!)
 		0 === not in use (light off)
@@ -1672,12 +1653,8 @@ static WRITE16_HANDLER( sho_coin_start_toggle_w )
 	}
 }
 
-static const offs_t sho_stage_bcd_offset = (0x20c42a - 0x20c000) / 2;
 static WRITE16_HANDLER( sho_stage_bcd_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_stage_bcd_offset]);
-
 	/*
 		LSB = stage in BCD format
 	*/
@@ -1689,48 +1666,37 @@ static WRITE16_HANDLER( sho_stage_bcd_w )
 	}
 }
 
-/* SHO Time */
-static const offs_t sho_time_offset = (0x20c500 - 0x20c000) / 2;
-static data16_t sho_time = 0;
 static WRITE16_HANDLER( sho_time_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_time_offset]);
-	
 	/* 
 		Writing time - used in gameplay, attract, track select, music select
+
+		MSB is BCD time in seconds (0-99)
+		We don't write the output directly when this changes (unless time == 0)
+		We write a 16-bit value (time/frames - MSB/LSB) on frame count in LSB change below
+
+		LSB is frame count between seconds (0x3C-0x01 DESC 60Hz). Does NOT descend from 0x3C when MSB secs hits 1 -> 0 
+		(i.e immediate game over at 0x003C. Road stops moving, etc - no 'grace last second' to reach CP!)
+		frame count is only active during gameplay/attract. Not track/music select (stays at 0x00/0x3C in these cases)
+		To avoid too many signals to outputs server, we modify this to 4Hz for the purposes of heartbeat blinking etc
 	*/
-	if (ACCESSING_MSB16) {
+	if (ACCESSING_MSB && 0 == ((data >> 8) & 0xff)) {
 		/* 
-			MSB is BCD time in seconds (0-99)
-			We don't write the output directly when this changes (unless time == 0)
-			We write a 16-bit value (time/frames - MSB/LSB) on frame count in LSB change below
+			Special case. LSB is zero here and we get no LSB update immediately after writing MSB=0
+			so we explicitly force write an output in this case
 		*/
-		sho_time = (data >> 8) & 0xff;
-		if (0 == sho_time) {
-			/* 
-				Special case. We get no LSB update immediately after writing MSB=0
-				so we explicitly write an output in this case
-			*/
-			/*printf("shangon: time/frames %04x\n", (sys16_extraram2[sho_time_offset])); */
-			output_set_value(SHO_TIME_NAME, sys16_extraram2[sho_time_offset]);
-		}
-	} else if (ACCESSING_LSB16) {
-		/*
-			LSB is frame count between seconds (0x3C-0x01 DESC 60Hz). Does NOT descend from 0x3C when MSB secs hits 1 -> 0 
-			(i.e immediate game over at 0x003C. Road stops moving, etc - no 'grace last second' to reach CP!)
-			frame count is only active during gameplay/attract. Not track/music select (stays at 0x00/0x3C in these cases)
-			To avoid too many signals to outputs server, we modify this to 4Hz for the purposes of heartbeat blinking etc
-		*/
-		data16_t frame_count = data & 0xff;
+		mem_mask &= 0xff00; /* force ACCESSING_LSB16 */
+	}
+	if (ACCESSING_LSB16) {
+		data16_t frame_count = sys16_extraram2[offset] & 0xff;
 		switch (frame_count)
 		{
 		case 0x0f:	/* 15 */
 		case 0x1e:	/* 30 */
 		case 0x2d:	/* 45 */
 		case 0x3c:	/* 60 */
-			/*printf("shangon: time/frames %04x\n", sys16_extraram2[sho_time_offset]);*/
-			output_set_value(SHO_TIME_NAME, sys16_extraram2[sho_time_offset]);
+			/*printf("shangon: time/frames %04x\n", sys16_extraram2[offset])*/;
+			output_set_value(SHO_TIME_NAME, sys16_extraram2[offset]);
 			break;
 		default:
 			break;
@@ -1738,16 +1704,11 @@ static WRITE16_HANDLER( sho_time_w )
 	}
 }
 
-/* SHO Speed */
-static const offs_t sho_speed_offset = (0x20c530 - 0x20c000) / 2;
 static data16_t sho_speed_val = 0xffff; /* any invalid speed so first write is always triggered */
 static bool sho_turbo_available = true; /* to force intial write to false */
 static bool sho_turbo_active = true; /* to force intial write to false */
 static WRITE16_HANDLER( sho_speed_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_speed_offset]);
-
 	if (sho_speed_val != data) {
 		/* Writing speed */
 		bool turbo_available = false, turbo_active = false;
@@ -1774,13 +1735,8 @@ static WRITE16_HANDLER( sho_speed_w )
 	}
 }
 
-/* SHO start lights */
-static const offs_t sho_start_lights_offset = (0x20f048 - 0x20c000) / 2;
 static WRITE16_HANDLER( sho_start_lights_w )
 {
-	/* Replace default memory handler by writing to mem bank */
-	COMBINE_DATA(&sys16_extraram2[sho_start_lights_offset]);
-
 	if (ACCESSING_MSB16) {
 		/* Writing Starting lights state
 			MSB is state (0-4)
@@ -1796,18 +1752,39 @@ static WRITE16_HANDLER( sho_start_lights_w )
 	}
 }
 
+
+
+/* SHO Credits / Service port/buttons */
+static const offs_t sho_credits_offset = (0x20c052 - 0x20c000) / 2;
+/* SHO 'Insert Coins' & 'Push Start Button' frame ctr */
+static const offs_t sho_coin_start_frame_ctr_offset = (0x20c428 - 0x20c000) / 2;
+static const offs_t sho_stage_bcd_offset = (0x20c42a - 0x20c000) / 2;		/* SHO Stage (BCD) */
+static const offs_t sho_time_offset = (0x20c500 - 0x20c000) / 2;			/* SHO Time */
+static const offs_t sho_speed_offset = (0x20c530 - 0x20c000) / 2; 			/* SHO Speed */
+static const offs_t sho_start_lights_offset = (0x20f048 - 0x20c000) / 2;	/* SHO start lights */
+
+static WRITE16_HANDLER( sho_sys16_extraram2_w ) {
+	/* Replace default memory handler by writing to mem bank */
+	COMBINE_DATA( sys16_extraram2 + offset );
+	if (sho_start_lights_offset == offset) { 
+		sho_start_lights_w(offset, data, mem_mask); 
+	} else if (sho_speed_offset == offset) {
+		sho_speed_w(offset, data, mem_mask);
+	} else if (sho_time_offset == offset) {
+		sho_time_w(offset, data, mem_mask);
+	} else if (sho_stage_bcd_offset == offset) {
+		sho_stage_bcd_w(offset, data, mem_mask);
+	} else if (sho_coin_start_frame_ctr_offset == offset) {
+		sho_coin_start_toggle_w(offset, data, mem_mask);
+	} else if (sho_credits_offset == offset) {
+		sho_credits_w(offset, data, mem_mask);
+	}
+}
+
 static MEMORY_WRITE16_START( shangon_writemem )
     { 0x000000, 0x03ffff, MWA16_ROM },
 	{ 0x20c640, 0x20c647, sound_shared_ram_w },
-/* ND: SHO write hooks */
-	{ 0x20c052, 0x20c053, sho_credits_w, },
-	{ 0x20c428, 0x20c429, sho_coin_start_toggle_w, },
-	{ 0x20c42a, 0x20c42b, sho_stage_bcd_w },
-	{ 0x20c500, 0x20c501, sho_time_w, },
-	{ 0x20c530, 0x20c531, sho_speed_w, },
-	{ 0x20f048, 0x20f049, sho_start_lights_w, },
-/* ND */
-	{ 0x20c000, 0x20ffff, SYS16_MWA16_EXTRAM2, &sys16_extraram2 },
+	{ 0x20c000, 0x20ffff, sho_sys16_extraram2_w, &sys16_extraram2 },
 	{ 0x400000, 0x40ffff, SYS16_MWA16_TILERAM, &sys16_tileram },
 	{ 0x410000, 0x410fff, SYS16_MWA16_TEXTRAM, &sys16_textram },
 	{ 0x600000, 0x600fff, SYS16_MWA16_SPRITERAM, &sys16_spriteram },

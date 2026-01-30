@@ -721,7 +721,7 @@ static int dblaxle_int6 = 0;
 static int ioc220_port = 0;
 static data16_t eep_latch = 0;
 
-/*static data16_t *taitoz_ram;*/
+static data16_t *taitoz_ram;
 /*static data16_t *motor_ram;*/
 
 static size_t taitoz_sharedram_size;
@@ -1509,9 +1509,7 @@ static WRITE16_HANDLER( chasehq_start_button_w )
 
 static WRITE16_HANDLER( chasehq_main_cpu_ram_w )
 {
-	offs_t address = offset << 1;
-	/* From debugging - main cpu (cpu0) uses static mem bank 3 */
-	COMBINE_DATA( (data16_t *)&cpu_bankbase[STATIC_BANK3][address] );
+	COMBINE_DATA( taitoz_ram + offset );
 	/*
 	 	memory offsets below are from a base of 0x100000 in 16-bit WORDS (2 bytes)
 		e.g. for 'revs' at 0x100402, the offset is 0x402 bytes == 0x201 WORDS
@@ -1594,7 +1592,7 @@ MEMORY_END
 
 static MEMORY_WRITE16_START( chasehq_writemem )
 	{ 0x000000, 0x07ffff, MWA16_ROM },
-	{ 0x100000, 0x107fff, chasehq_main_cpu_ram_w},
+	{ 0x100000, 0x107fff, chasehq_main_cpu_ram_w, &taitoz_ram},
 	{ 0x108000, 0x10bfff, sharedram_w, &taitoz_sharedram, &taitoz_sharedram_size },
 	{ 0x10c000, 0x10ffff, MWA16_RAM },
 	{ 0x400000, 0x400001, TC0220IOC_halfword_portreg_w },
