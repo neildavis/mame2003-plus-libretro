@@ -1877,14 +1877,40 @@ static DRIVER_INIT( shangon ){
 }
 
 /* ND: HUD mods in shangon */
-void shangon_hud_patch(void) {
-	/* Get ptr to ROM data in RAM */
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+#define SHO_HUD_HIDE_ALL
 
-	/* Hide 'SPEED' & 'KM' Label in HUD by patching out call to render routine (bsr $1da6) @ 0x168a with 2x 'nop' (0x4e71) instr's */
-	RAM[0x168a >> 1] = 0x4e71;	RAM[(0x168a >> 1) + 1] = 0x4e71;
-	/* Hide Speed numerals in HUD by patching out call to render routine (bsr $1e34) @ 0x16d8 with 2x 'nop' (0x4e71) instr's */
-	RAM[0x16d8 >> 1] = 0x4e71;	RAM[(0x16d8 >> 1) + 1] = 0x4e71;
+#ifdef SHO_HUD_HIDE_ALL
+#define SHO_HUD_HIDE_SPEED
+#define SHO_HUD_HIDE_COURSE
+#define SHO_HUD_HIDE_STAGE_TXT
+#define SHO_HUD_HIDE_STAGE_GFX
+#endif /* SHO_HUD_HIDE_ALL */
+
+void shangon_hud_patch(UINT16 *RAM) {
+
+#ifdef SHO_HUD_HIDE_SPEED
+	/* Hide 'Speed NNN KM' by patching out call to render routines with 2x 'nop' (0x4e71) instr's */
+	RAM[0x168a >> 1] = 0x4e71;	RAM[(0x168a >> 1) + 1] = 0x4e71; /* 'SPEED' & 'KM' Labels: (bsr $1da6) @ 0x168a */
+	RAM[0x16d8 >> 1] = 0x4e71;	RAM[(0x16d8 >> 1) + 1] = 0x4e71; /* Speed numerals: (bsr $1e34) @ 0x16d8 */
+#endif /* SHO_HUD_HIDE_SPEED */
+
+#ifdef SHO_HUD_HIDE_COURSE
+	/* Hide 'Course' by patching out call to render routine with 2x 'nop' (0x4e71) instr's*/
+	RAM[0x5b46 >> 1] = 0x4e71;	RAM[(0x5b46 >> 1) + 1] = 0x4e71; /* (bsr $2956) @ 0x54bc */
+#endif /* SHO_HUD_HIDE_COURSE */
+
+#ifdef SHO_HUD_HIDE_STAGE_TXT
+	/* Hide 'Stage N' text by patching out call to render routines with 2x 'nop' (0x4e71) instr's*/
+	RAM[0x5b8c >> 1] = 0x4e71;	RAM[(0x5b8c >> 1) + 1] = 0x4e71; /* 'Stage' label: (bsr $2956) @ 0x5b8c */
+	RAM[0x5b9e >> 1] = 0x4e71;	RAM[(0x5b9e >> 1) + 1] = 0x4e71; /* digit render via bsr $2a1c @ 0x5b9e */
+#endif /* SHO_HUD_HIDE_STAGE_TXT */
+
+#ifdef SHO_HUD_HIDE_STAGE_GFX
+	/* Hide Stage graphic by patching out call to render routines with 2x 'nop' (0x4e71) instr's*/
+	RAM[0x64ec >> 1] = 0x4e71;	RAM[(0x64ec >> 1) + 1] = 0x4e71; /* 'Outline' :	bsr $5f22 @ 0x64ec */
+	RAM[0x5c08 >> 1] = 0x4e71;	RAM[(0x5c08 >> 1) + 1] = 0x4e71; /* 'Fill' :	bsr $5f66 @ 0x5c08 */
+#endif /* SHO_HUD_HIDE_STAGE_GFX */
+
 }
 
 static DRIVER_INIT( shangonb ){
@@ -1915,16 +1941,12 @@ static DRIVER_INIT( shangonb ){
 	RAM[0x1a6a >> 1] = 0x155e;	/* Patch ROM address in A1 of text to render from IC (0x006e) to PSB (0x155e) */
 
 	/* Knock out 'Credit(s)' text and num */
-	RAM[0x28de >> 1] = 0x4e71;	RAM[(0x28de >> 1) + 1] = 0x4e71; /* bsr -> nop for text render*/
+	RAM[0x28de >> 1] = 0x4e71;	RAM[(0x28de >> 1) + 1] = 0x4e71; /* 'CREDIT[S]' text: bsr $2956 @ 0x28de -> nop for text render*/
 	RAM[0x28e2 >> 1] = 0x4e75;	/* replace lea $410cc4.l,A0  with early rts to skip render digit at 0x28e2 */
 	RAM[(0x28e2 >> 1) + 1] = 0x4e71;	RAM[(0x28e2 >> 1) + 2] = 0x4e71; /* Fill double word gap left from previous lea with nop */
-
-
-#define SHO_HUD_MOD
-#ifdef SHO_HUD_MOD
-	shangon_hud_patch();
-#endif
-
+	
+	/* Selective HUD patches */
+	shangon_hud_patch(RAM);
 	}	
 }
 /***************************************************************************/
