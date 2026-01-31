@@ -730,18 +730,43 @@ static WRITE16_HANDLER( outrun_analog_select_w )
 	}
 }
 
-static int or_gear=0;
-
+static data16_t or_credits_val = 0;
+static data16_t or_btns = 0xffff; /* ipt2 bitfield */
 static READ16_HANDLER( or_io_service_r )
 {
-	int ret=input_port_2_r( offset );
-	int data=input_port_1_r( offset );
-	if(data & 4) or_gear=0;
-	else if(data & 8) or_gear=1;
+	/*
+	IPT1:
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON4 )
 
-	if(or_gear) ret|=0x10;
-	else ret&=0xef;
+	IPT2:
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
+	*/
+	data16_t ret = readinputport(2), ipt2=ret;
 
+	/* Gear port hack for IPT2 IPT_BUTTON3 */
+	data16_t ipt1 = readinputport(1);
+	if(ipt1 & 0x04) {
+		ret &= (~0x10);	/* LO */
+	} else if(ipt1 & 0x08) {
+		ret |= 0x10;	/* HI */
+	}
+
+	if ((ipt2 ^ or_btns) & 0x08) {
+		/* Start button state changed */
+		/* printf("outrun: Start Button %s\n", (0 == (ipt2 & 0x08)) ? "Pressed" : "Released"); */
+		if (0 == (ipt2 & 0x08) && (0 == or_credits_val)) {
+			/* Start button pressed and zero credits - Simulate coin */
+			ret |= 0x08; /* Disable Start button */
+			ret &= (~0x40); /* Simulate Coin */
+			/* printf("outrun: Simulate Coin In!\n"); */
+		}
+	}
+	/* We need to save the input port state as read from the port to catch changes next time ... */
+	or_btns = ipt2;
+	/* ... but we return our modfifed state to fool the game */
 	return ret;
 }
 
@@ -821,8 +846,8 @@ static WRITE16_HANDLER( outrun_sys16_extraram2_w )
 {
 	/* { 0x060000, 0x067fff, outrun_sys16_extraram2_w, &sys16_extraram2 } */
 	COMBINE_DATA( sys16_extraram2 + offset );
-	/* Time is stored in single byte packed BCD of WORD @ 0x60860 (LSB - offset: 0x430 ) */
 	if (0x430 == offset && ACCESSING_LSB) {
+		/* Time is stored in single byte packed BCD of WORD @ 0x60860 (LSB - offset: 0x430 ) */
 		UINT16 fuel_percent = 0;
 		UINT16 time = 10 * ((data & 0x00f0) >> 4) + (data & 0x000f);
 		if (time > outrun_time_last) {
@@ -837,6 +862,9 @@ static WRITE16_HANDLER( outrun_sys16_extraram2_w )
 			fuel_percent = 100;
 		}
 		RealDashCanClientUpdateFuel(fuel_percent);
+	} else if (0x29 == offset && ACCESSING_MSB) {
+		/* Credits is stored in single byte of WORD @ 0x6052 (MSB - offset: 0x29 ) */
+		or_credits_val = (data >> 8) & 0xff;
 	}
 }
 
@@ -1174,6 +1202,20 @@ void outrun_hud_patch(void)
 	RAM[(HUD_STRUCT_LAP1 >> 1) + 1] 	= 0x00E6;	/* HUD_STRUCT_LAP1 pos */
 	RAM[(HUD_STRUCT_LAP2 >> 1) + 1] 	= 0x0166;	/* HUD_STRUCT_LAP2 pos */
 	RAM[(HUD_ADDR_LAP_TIME >> 1) + 1] 	= 0x0170;	/* Lap time pos (HUD_STRUCT_LAP2 + 0xA)*/
+
+	/* 'INSERT COINS' -> 'PUSH START BUTTON' */
+	RAM[0xb82e >> 1] = 0xbbd0; /* SET */
+	RAM[0xb83c >> 1] = 0xbbec; /* CLR */
+
+	/* 
+		Hide 'CREDIT[S] render routine is at 0x6cde and is called from multiple places.
+		We just patch the first instruction in the routing to 'rts' early:
+		tst.b $60c50 (3 WORDs) -> {rts, nop, nop}
+	*/
+	RAM[0x6cde >> 1] = 0x4e75; RAM[(0x6cde >> 1) + 1] = 0x4e71;	RAM[(0x6cde >> 1) + 2] = 0x4e71;
+
+	/* 1987 ©'BETA' -> 'SEGA' */
+	RAM[0xbd00 >> 1] = 0x5345;	RAM[(0xbd00 >> 1) + 1] = 0x4741;
 }
 
 static DRIVER_INIT( outrun )
