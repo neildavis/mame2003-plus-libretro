@@ -1919,7 +1919,7 @@ static DRIVER_INIT( shangon ){
 }
 
 /* ND: HUD mods in shangon */
-#define SHO_HUD_HIDE_ALL
+/* #define SHO_HUD_HIDE_ALL */
 
 #ifdef SHO_HUD_HIDE_ALL
 #define SHO_HUD_HIDE_SPEED
