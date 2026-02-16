@@ -5,14 +5,18 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <cstdlib>
 #include <chrono>
 #include <thread>
 
 #include <pigpiod_if2.h>
 #include <wiringPi.h>
 #include <sr595.h>
+
+#ifdef USE_TM1637PI
 #include <tm1637.h>
 #include <tm1637_sayer.h>
+#endif
 
 const int SHO_SPEED_KPH_MAX    = 324;          // with turbo
 const int SHO_REVS_RPM_MAX     = 18000;        // at max speed
@@ -65,13 +69,17 @@ void SuperHangOnOutputHandler::init(OutputHandlerMode /*mode*/) {
     if (m_pi_handle < 0) {
         printf("shangon: Failed to connect to pigpiod daemon\n");
     }
+    // Init wiringPi
+    wiringPiSetupGpio();
     // Initialize to zero speed
     handle_speed_output(0);
-    // Init TM1637 Display (alos inits wirinpPi)
+    // Init TM1637 Display
+#ifdef USE_TM1637PI
     m_pTM1637 = std::make_shared<tm1637::Device>(PIN_TM1637_CLK, PIN_TM1637_DIO, tm1637::GpioWiringPiBCM);
     m_pTM1637->clear();
     m_pSayer.reset(new tm1637::Sayer(m_pTM1637));
     m_pSayer->begin("SEGA   SUPER HANG-ON   PRESS START");
+#endif 
     // Init wiringPi and Shift Register for LEDs
     pinMode(PIN_SR_OE, OUTPUT);
     digitalWrite(PIN_SR_OE, HIGH);  // Pull 74x595 OE HIGH to disable outputs
@@ -91,10 +99,12 @@ void SuperHangOnOutputHandler::deinit() {
         m_pi_handle = -1;
     }
     // Clear TM1637
+#ifdef USE_TM1637PI
     if (m_pTM1637) {
         m_pTM1637->setColon(false);
         m_pTM1637->clear();
     }
+#endif
     // Set all LEDs to off
     for (int i = PIN_SR_BASE; i < PIN_SR_BASE + PIN_SR_NUM; i++) {
         digitalWrite(i, LOW);   
@@ -192,17 +202,21 @@ void SuperHangOnOutputHandler::handle_start_button_output(int value) {
     //printf("shangon: Start Button frames: %02x\n", value);
     digitalWrite(PIN_START_BTN, (value > 0x00 && value < 0x1f) ? HIGH : LOW);    // flash LED
     // Scroll text on tm1637
+#ifdef USE_TM1637PI
     if (m_pSayer->finished()) {
         m_pSayer->reset();
     }
     m_pSayer->next();
+#endif
 }
 
 void SuperHangOnOutputHandler::handle_time_secs_output(int value) {
     if (value != m_time) {
         //printf("shangon: Time changed: %02x\n", time);
         m_time = value;
+#ifdef USE_TM1637PI
         m_pTM1637->showIntegerLiteral(value | (m_stage << 8), tm1637::RadixHex);
+#endif
         if (0 == value) {
             /* Time reached zero during game - Game Over! */
             handle_game_over();
@@ -258,7 +272,9 @@ void SuperHangOnOutputHandler::handle_game_start() {
         e.g. disable start button lamp manually since flag we are using is not updated by the game 
     */
     digitalWrite(PIN_START_BTN, LOW);
+#ifdef USE_TM1637PI
     m_pTM1637->setColon(true);
+#endif
     // Since speed was rest to zero before and doesn't change again until we accelerate
     // we need to force a speed update to get idle revs
     handle_speed_output(0);
@@ -277,6 +293,8 @@ void SuperHangOnOutputHandler::handle_game_over() {
         digitalWrite(i, LOW);   
     }
     digitalWrite(PIN_START_BTN, HIGH);
+#ifdef USE_TM1637PI
     m_pTM1637->setColon(false);
     m_pTM1637->clear();
+#endif
 }

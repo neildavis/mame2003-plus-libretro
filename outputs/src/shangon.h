@@ -46,9 +46,10 @@ private:
     int     m_time;
     //
     int     m_pi_handle;
+#ifdef USE_TM1637PI
     std::shared_ptr<tm1637::Device> m_pTM1637;
     std::unique_ptr<tm1637::Sayer> m_pSayer;
-
+#endif
 };
 
 #endif // ROM_SHANGON

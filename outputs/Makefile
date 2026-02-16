@@ -98,7 +98,8 @@ ifneq (,$(findstring shangon,$(ROMS)))
 	CPPFLAGS += -DROM_SHANGON
 	USE_WIRINGPI := 1
 	USE_PIGPIOD := 1
-	USE_TM1637PI := 1
+# TM1637 is OPTIONAL for Super Hang-On. Pass on cmd line if required
+#	USE_TM1637PI := 1
 endif
 
 ifeq ($(USE_GPIOD), 1)
@@ -112,6 +113,7 @@ ifeq ($(USE_UDDRPI), 1)
 	LIBS += -lwiringPiUDDrpi
 endif
 ifeq ($(USE_TM1637PI), 1)
+	CPPFLAGS += -DUSE_TM1637PI
 	LIBS += -lTM1637Pi
 endif
 ifeq ($(USE_PIGPIOD), 1)
