@@ -7,3 +7,5 @@
 package.json
 .npmignore
 tools/bin2c/bin2c
+*.egg-info/
+tools/nd/rgb_to_sys16/tkinter/*.bin

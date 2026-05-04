@@ -1,0 +1,13 @@
+[project]
+name = "palette-patcher"
+version = "0.1.0"
+description = "System 16B Palette ROM Patcher"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = []

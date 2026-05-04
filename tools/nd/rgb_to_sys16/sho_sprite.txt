@@ -1,0 +1,97 @@
+SHO:
+
+MAME 2003
+=========
+
+SPRITE RAM:
+   600030:   AC6F  A0D9  0008  40B5  2A03  0000  0000  42A3  
+
+From mame2003-plus-libretro: src/vidhrdw/sys16.c:
+int sys16_sprite_hangon( struct sys16_sprite_attributes *sprite, const UINT16 *source, int bJustGetColor ){
+/*
+	0	YYYYYYYY YYYYYYYY	bottom = 0xAC, top = 0x6F => Height = 0xAC - 0x6F + 1 = 0x3E (62) lines
+	1	bbbb---X XXXXXXXX	xpos = 0xA0D9 & 0x1FF = 0xD9, sprite bank = 0xA
+	2	-------- -WWWWWWW	pitch = 0x08
+	3	FTTTTTTT TTTTTTTT	gfx (start) = 0x40B5 (WORD Offset into bank 0xA)
+	4	--CCCCCC ZZZZZZ--	palette = { 29, 2A, 2B, 2C } (animated in 4 states), zoomx = 0
+	5	-------- -------- 00 00
+	6	-------- -------- 00 00
+	7	-------- -------- 42 A3 (end address)
+*/
+
+From ROM_START( shangonb ) in src/drivers/outrun.c:
+
+	ROM_REGION( 0x0120000, REGION_GFX2, 0 ) /* sprites */
+	ROM_LOAD16_BYTE( "ic8",	0x000001, 0x010000, CRC(d6ac012b) SHA1(305023b1a0a9d84cfc081ffc2ad7578b53d562f2) )
+	ROM_RELOAD(     		0x100001, 0x010000 )
+	ROM_LOAD16_BYTE( "ic16",  0x000000, 0x010000, CRC(d9d83250) SHA1(f8ca3197edcdf53643a5b335c3c044ddc1310cd4) )
+	ROM_RELOAD(     		0x100000, 0x010000 )
+	ROM_LOAD16_BYTE( "s-hangon.20", 0x020001, 0x010000, CRC(eef23b3d) SHA1(2416fa9991afbdddf25d469082e53858289550db) )
+	ROM_RELOAD(           		      0x0e0001, 0x010000 )
+	ROM_LOAD16_BYTE( "s-hangon.14", 0x020000, 0x010000, CRC(0f26d131) SHA1(0d8b6eb8b8aae0aa8f0fa0c31dc91ad0e610be3e) )
+	ROM_RELOAD(              		  0x0e0000, 0x010000 )
+	ROM_LOAD16_BYTE( "ic6",         0x040001, 0x010000, CRC(8a57b8d6) SHA1(df1a31559dd2d1e7c2c9d800bf97526bdf3e84e6) )
+	ROM_LOAD16_BYTE( "ic14",        0x040000, 0x010000, CRC(3aff8910) SHA1(4b41a49a7f02363424e814b37edce9a7a44a112e) )
+    ROM_LOAD16_BYTE( "ic5",         0x060001, 0x010000, CRC(af473098) SHA1(a2afaba1cbf672949dc50e407b46d7e9ae183774) )
+	ROM_LOAD16_BYTE( "ic13",        0x060000, 0x010000, CRC(80bafeef) SHA1(f01bcf65485e60f34e533295a896fca0b92e5b14) )
+	ROM_LOAD16_BYTE( "ic4",         0x080001, 0x010000, CRC(03bc4878) SHA1(548fc58bcc620204e30fa12fa4c4f0a3f6a1e4c0) )
+	ROM_LOAD16_BYTE( "ic12",        0x080000, 0x010000, CRC(274b734e) SHA1(906fa528659bc17c9b4744cec52f7096711adce8) )
+	ROM_LOAD16_BYTE( "ic3",         0x0a0001, 0x010000, CRC(9f0677ed) SHA1(5964642b70bfad418da44f2d91476f887b021f74) )
+	ROM_LOAD16_BYTE( "ic11",        0x0a0000, 0x010000, CRC(508a4701) SHA1(d17aea2aadc2e2cd65d81bf91feb3ef6923d5c0b) )
+	ROM_LOAD16_BYTE( "ic2",         0x0c0001, 0x010000, CRC(b176ea72) SHA1(7ec0eb0f13398d014c2e235773ded00351edb3e2) )
+	ROM_LOAD16_BYTE( "ic10",        0x0c0000, 0x010000, CRC(42fcd51d) SHA1(0eacb3527dc21746e5b901fcac83f2764a0f9e2c) )
+
+Bank 0xA (10) 0x40B5 WORD (0x816A BYTES) OFFSET in REGION_GFX2 (sprites) 
+Each bank is 64K (0x10000 bytes) Bank 0xA is ic3/ic11 (interleaved?)
+sprite starts at 0x10000 * 0xA + 0x816A (offset in bytes) = 0x60816A
+                        								 ** ======== **
+Pitch of 8 WORDs (16 bytes) per line and 62 lines:
+16 * 62 = 992 (0x10 & 0x3E = 0x3E0) bytes of sprite data
+
+Dump from MAME (shangonrb) with debugger when sprite is visible:
+saver sprite.bin,a816a,3e0,:sprites
+
+Sprite data
+===========
+
+From https://jammarcade.net/images/2024/04/s16b.txt
+(originally from Charles Macdonald's sys16b notes)
+
+ Sprite pattern data is arranged as groups of words, within each word every
+ four bits defines one pixel, like so:
+
+ MSB          LSB
+ aaaabbbbccccdddd
+
+ a = Pixel 0
+ b = Pixel 1
+ c = Pixel 2
+ d = Pixel 3
+
+ Some sprite pixel values have special meanings. Zero is transparent; such
+ pixels are not displayed. A value of 15 indicates an end marker - this is
+ also transparent, but additionally tells the sprite generator to stop
+ drawing the current line of a sprite. It's the end markers that define the
+ width of the sprite, which can vary on every line. I'll discuss the end
+ markers later on.
+
+ The pitch attribute for each sprite defines the value added to the start
+ address after a line of the sprite has been rendered. The value is a signed
+ byte, so $01 is 1 word, $FF is -1 word, and $00 really is zero, meaning the
+ address is never changed.
+
+
+ Sprite rendering
+
+ For normal sprites, the sprite generator adds the pitch to the base address
+ first, then starts reading words from the current bank and displays pixels
+ accordingly. If the last pixel of any four pixel group is set to $0F, it
+ stops rendering the sprite once the other pixels have been drawn. The pitch
+ is then added to the base address, and the process repeats for the next line.
+ This occurs on all lines that the sprite falls within.
+
+ For horizontally flipped sprites, the sprite generator starts reading words
+ from the base address plus an offset which is set to the pitch value. The
+ offset is decreased as each group of four pixels is displayed. If the first
+ pixel from any four pixel group is set to $0F, it stops rendering the sprite
+ once the other pixels have been drawn.

@@ -1955,6 +1955,22 @@ void shangon_hud_patch(UINT16 *RAM) {
 
 }
 
+void sho_patch_start_lights_palette(UINT16 *ROM) {
+    UINT16 *paletterom16 = ROM + (0xe18c >> 1);
+    paletterom16[0x0295] = 0x6480;
+    paletterom16[0x0296] = 0x04C0;
+    paletterom16[0x0297] = 0x03A0;
+    paletterom16[0x02A5] = 0x6480;
+    paletterom16[0x02A6] = 0x04C0;
+    paletterom16[0x02A7] = 0x03A0;
+    paletterom16[0x02B5] = 0x6480;
+    paletterom16[0x02B6] = 0x04C0;
+    paletterom16[0x02B7] = 0x03A0;
+    paletterom16[0x02C5] = 0x06E0;
+    paletterom16[0x02C6] = 0x67F0;
+    paletterom16[0x02C7] = 0x23E0;
+}
+
 static DRIVER_INIT( shangonb ){
 	generate_gr_screen(512,1024,8,0,4,0x8000);
 	output_init("shangonb");
@@ -1989,6 +2005,8 @@ static DRIVER_INIT( shangonb ){
 	
 	/* Selective HUD patches */
 	shangon_hud_patch(RAM);
+	sho_patch_start_lights_palette(RAM);
+
 	}	
 }
 /***************************************************************************/
