@@ -1957,6 +1957,9 @@ void shangon_hud_patch(UINT16 *RAM) {
 
 void sho_patch_start_lights_palette(UINT16 *ROM) {
     UINT16 *paletterom16 = ROM + (0xe18c >> 1);
+
+/* A palette mod that just changes the blue start light to green */
+#if defined (SHO_START_LIGHTS_GREEN_GO)
     paletterom16[0x0295] = 0x6480;
     paletterom16[0x0296] = 0x04C0;
     paletterom16[0x0297] = 0x03A0;
@@ -1969,7 +1972,39 @@ void sho_patch_start_lights_palette(UINT16 *ROM) {
     paletterom16[0x02C5] = 0x06E0;
     paletterom16[0x02C6] = 0x67F0;
     paletterom16[0x02C7] = 0x23E0;
+
+/* A palette mod that changes the start lights to a Red/Amber/Green*/
+#elif defined (SHO_START_LIGHTS_RAG)
+    paletterom16[0x0295] = 0x6480;
+    paletterom16[0x0296] = 0x04C0;
+    paletterom16[0x0297] = 0x03A0;
+    paletterom16[0x0298] = 0x006C;
+    paletterom16[0x0299] = 0x00AD;
+    paletterom16[0x029B] = 0x006D;
+    paletterom16[0x02A5] = 0x6480;
+    paletterom16[0x02A6] = 0x04C0;
+    paletterom16[0x02A7] = 0x03A0;
+    paletterom16[0x02A8] = 0x006C;
+    paletterom16[0x02A9] = 0x00AD;
+    paletterom16[0x02AB] = 0x006D;
+    paletterom16[0x02AC] = 0x000C;
+    paletterom16[0x02AD] = 0x006F;
+    paletterom16[0x02AE] = 0x000C;
+    paletterom16[0x02B5] = 0x6480;
+    paletterom16[0x02B6] = 0x04C0;
+    paletterom16[0x02B7] = 0x03A0;
+    paletterom16[0x02B8] = 0x02AF;
+    paletterom16[0x02B9] = 0x10EF;
+    paletterom16[0x02C5] = 0x06E0;
+    paletterom16[0x02C6] = 0x67F0;
+    paletterom16[0x02C7] = 0x23E0;
+    paletterom16[0x02C8] = 0x006C;
+    paletterom16[0x02C9] = 0x00AD;
+    paletterom16[0x02CB] = 0x006D;
+#endif
+
 }
+
 
 static DRIVER_INIT( shangonb ){
 	generate_gr_screen(512,1024,8,0,4,0x8000);
@@ -2005,8 +2040,9 @@ static DRIVER_INIT( shangonb ){
 	
 	/* Selective HUD patches */
 	shangon_hud_patch(RAM);
-	sho_patch_start_lights_palette(RAM);
 
+	/* Start lights sprite palette patches */
+	sho_patch_start_lights_palette(RAM);
 	}	
 }
 /***************************************************************************/
